@@ -1,0 +1,1006 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Pique-nique — auberge espagnole</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --grass:#4a7c3f; --grass-dark:#3a6431; --grass-soft:#eef3e9;
+    --tomato:#cb4b3f; --tomato-soft:#fbeae7;
+    --cream:#fbf7ee; --paper:#f3ecdc; --bg:#f6f1e4;
+    --ink:#2b2924; --muted:#8d8676; --line:#e4ddca;
+    --radius:14px; --radius-sm:9px;
+    --shadow:0 1px 2px rgba(43,41,36,.05), 0 6px 18px rgba(43,41,36,.06);
+    --display:'Fraunces', Georgia, 'Times New Roman', serif;
+    --body:system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{font-family:var(--body); color:var(--ink); background:var(--bg); line-height:1.5; -webkit-text-size-adjust:100%; padding:0 16px env(safe-area-inset-bottom)}
+  .wrap{max-width:780px; margin:0 auto; padding:18px 0 64px}
+  .gingham{height:10px; border-radius:6px; background-image:repeating-linear-gradient(45deg, var(--tomato) 0 6px, transparent 6px 12px),repeating-linear-gradient(-45deg, rgba(203,75,63,.55) 0 6px, transparent 6px 12px); background-color:#fff; opacity:.85}
+
+  /* ---------- Barre + onglets ---------- */
+  .topbar{display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; justify-content:space-between; margin:16px 0 8px}
+  .brand{font-family:var(--display); font-weight:600; font-size:21px; color:var(--ink); line-height:1.1}
+  .tabs{display:flex; gap:4px; background:var(--paper); padding:4px; border-radius:999px; border:1px solid var(--line)}
+  .tabs button{font-family:var(--body); font-weight:600; font-size:13.5px; border:0; background:transparent; color:var(--muted); padding:8px 15px; border-radius:999px; cursor:pointer; transition:background .12s,color .12s}
+  .tabs button.active{background:var(--cream); color:var(--grass-dark); box-shadow:var(--shadow)}
+  .tabs button:focus-visible{outline:2px solid var(--grass); outline-offset:2px}
+  .page[hidden]{display:none}
+
+  .ev-banner{background:var(--grass-soft); border:1px solid var(--line); border-radius:var(--radius); padding:12px 16px; margin:14px 0 2px; display:flex; gap:6px 16px; flex-wrap:wrap; align-items:baseline}
+  .ev-banner .b-title{font-family:var(--display); font-weight:600; font-size:18px; color:var(--ink)}
+  .ev-banner .b-meta{color:var(--grass-dark); font-weight:600; font-size:14px}
+  .ev-banner .b-note{color:var(--muted); font-size:13px; flex-basis:100%}
+
+  /* ---------- Cartes ---------- */
+  .card{background:var(--cream); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px 18px 20px; margin:16px 0}
+  .card > h2{font-family:var(--display); font-weight:600; font-size:21px; margin:0 0 2px; display:flex; align-items:center; gap:10px}
+  .card .sub{color:var(--muted); font-size:13px; margin:0 0 14px}
+
+  /* ---------- Champs ---------- */
+  .meta{display:flex; flex-wrap:wrap; gap:12px 16px}
+  .meta .field{display:flex; flex-direction:column; gap:4px}
+  .meta .horaire{display:flex; align-items:flex-end; gap:8px}
+  .meta .horaire .sep{color:var(--muted); padding-bottom:9px; font-size:13px}
+  .meta input[type=time]{width:112px}
+  .meta .note{flex:1 1 100%}
+  .meta .note input{width:100%}
+
+  .row{display:flex; gap:12px; flex-wrap:wrap; margin-bottom:4px}
+  .row > .field{flex:1 1 180px; display:flex; flex-direction:column; gap:5px; min-width:0}
+  label{font-size:12px; font-weight:600; color:var(--ink)}
+  .meta label{font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted)}
+  .mini{font-size:11px; color:var(--muted)}
+  input[type=text], input[type=number], input[type=time], select{
+    font-family:var(--body); font-size:15px; color:var(--ink); border:1px solid var(--line); background:#fff;
+    border-radius:var(--radius-sm); padding:10px 11px; width:100%;
+  }
+  .meta input{background:var(--cream)}
+  input:focus, select:focus{outline:2px solid var(--grass-soft); outline-offset:1px; border-color:var(--grass)}
+  select{appearance:none; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M2 4l4 4 4-4' stroke='%238d8676' stroke-width='1.6' fill='none' stroke-linecap='round'/></svg>"); background-repeat:no-repeat; background-position:right 11px center; padding-right:30px}
+
+  /* ---------- Apports ---------- */
+  .apports{margin-top:16px}
+  .apports > .lbl{font-size:12px; font-weight:600; margin-bottom:8px; display:block}
+  .apport{display:grid; gap:10px; align-items:start; margin-bottom:10px; grid-template-columns:minmax(150px,190px) 72px 1fr auto; grid-template-areas:"cat qty plat del"}
+  .apport .col{display:flex; flex-direction:column; gap:5px; min-width:0}
+  .apport .col.cat{grid-area:cat}
+  .apport .col.qty{grid-area:qty}
+  .apport .col.plat{grid-area:plat}
+  .apport .apQty{text-align:center; padding-left:6px; padding-right:6px; -moz-appearance:textfield}
+  .apport .apQty::-webkit-outer-spin-button,.apport .apQty::-webkit-inner-spin-button{-webkit-appearance:none; margin:0}
+  .apport .hint{font-size:12px; color:var(--muted); line-height:1.35}
+  .apport .hint b{color:var(--grass-dark); font-weight:600}
+  .apport .hint.dup{color:var(--tomato)}
+  .apport .del{grid-area:del; border:1px solid var(--line); background:#fff; color:var(--muted); width:38px; height:42px; border-radius:var(--radius-sm); cursor:pointer; font-size:18px; line-height:1; align-self:start}
+  .apport .del:hover{border-color:var(--tomato); color:var(--tomato); background:var(--tomato-soft)}
+  @media (max-width:560px){ .apport{grid-template-columns:72px 1fr auto; grid-template-areas:"cat cat cat" "qty plat del"} }
+
+  /* ---------- Boutons ---------- */
+  .btn{font-family:var(--body); font-weight:600; font-size:14px; cursor:pointer; border-radius:var(--radius-sm); padding:10px 16px; border:1px solid transparent; transition:background .12s, border-color .12s, color .12s}
+  .btn.primary{background:var(--grass); color:#fff}
+  .btn.primary:hover{background:var(--grass-dark)}
+  .btn.ghost{background:transparent; color:var(--grass-dark); border-color:var(--line)}
+  .btn.ghost:hover{border-color:var(--grass); background:var(--grass-soft)}
+  .btn.link{background:transparent; border:0; color:var(--grass-dark); padding:8px 4px; text-decoration:underline; text-underline-offset:3px}
+  .btn.danger{background:transparent; color:var(--tomato); border-color:var(--line)}
+  .btn.danger:hover{background:var(--tomato-soft); border-color:var(--tomato)}
+  .btn:focus-visible{outline:2px solid var(--grass); outline-offset:2px}
+  .form-actions{display:flex; gap:10px; align-items:center; margin-top:8px; flex-wrap:wrap}
+  .toolbar{display:flex; gap:8px; flex-wrap:wrap; margin:2px 0 16px}
+
+  /* ---------- Édition ---------- */
+  .edit-pick{display:flex; align-items:center; gap:10px; margin:0 0 12px; font-size:13px; color:var(--muted)}
+  .edit-pick select{max-width:260px}
+  .edit-banner{background:var(--tomato-soft); border:1px solid var(--tomato); border-radius:var(--radius-sm); padding:9px 12px; font-size:13px; color:var(--ink); margin:0 0 14px}
+  .edit-banner b{color:var(--tomato)}
+
+  /* ---------- Menu ---------- */
+  .menu-head{display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap}
+  .convives{font-size:13px; color:var(--ink); background:var(--grass-soft); border:1px solid var(--line); border-radius:999px; padding:6px 12px; white-space:nowrap; align-self:flex-start}
+  .convives b{color:var(--grass-dark)}
+  .convives:empty{display:none}
+  .cat-block{margin:18px 0 4px}
+  .cat-block:first-of-type{margin-top:6px}
+  .cat-title{font-size:12px; text-transform:uppercase; letter-spacing:.1em; font-weight:700; color:var(--grass-dark); margin:0 0 8px; display:flex; align-items:center; gap:8px}
+  .cat-title .ct-count{color:var(--muted); font-weight:600; letter-spacing:0; text-transform:none; font-size:12px}
+  .ct-count.ct-ok{color:var(--grass-dark)}
+  .ct-count.ct-short{color:var(--tomato)}
+  .menu-item{display:flex; align-items:baseline; gap:8px; padding:5px 0}
+  .menu-item .plat{font-size:15.5px; color:var(--ink)}
+  .menu-item .lead{flex:1 1 auto; border-bottom:1px dotted var(--line); transform:translateY(-4px); min-width:18px}
+  .menu-item .who{white-space:nowrap; color:var(--grass-dark); font-weight:600; font-size:14px}
+  .gaps{margin-top:18px; border-top:1px dashed var(--line); padding-top:14px}
+  .gaps .gaps-lbl{font-size:12px; color:var(--muted); margin-bottom:8px; font-weight:600}
+  .chips{display:flex; gap:8px; flex-wrap:wrap}
+  .chip-gap{font-size:13px; color:var(--tomato); border:1px dotted var(--tomato); background:var(--tomato-soft); border-radius:999px; padding:4px 11px}
+  .empty{text-align:center; color:var(--muted); padding:24px 10px; font-style:italic}
+
+  /* ---------- Grille de présence ---------- */
+  .grid-scroll{overflow-x:auto; -webkit-overflow-scrolling:touch; border:1px solid var(--line); border-radius:var(--radius-sm); background:#fff}
+  table.pgrid{border-collapse:separate; border-spacing:0; font-size:12px; min-width:100%}
+  .pgrid th, .pgrid td{border-bottom:1px solid var(--line); border-right:1px solid var(--line)}
+  .pgrid thead th{padding:7px 5px; font-weight:700; color:var(--muted); background:var(--paper); white-space:nowrap; font-variant-numeric:tabular-nums; min-width:30px; text-align:center}
+  .pgrid th.corner{position:sticky; left:0; z-index:3; background:var(--paper); border-right:1px solid var(--line)}
+  .pgrid th.rowname{position:sticky; left:0; z-index:2; background:var(--cream); text-align:left; padding:7px 12px; white-space:nowrap; font-weight:600; color:var(--ink); min-width:120px}
+  .pgrid th.rowname span{display:block; font-weight:500; color:var(--muted); font-size:11px}
+  .pgrid td{height:32px; min-width:30px}
+  .pgrid td.on{background:var(--grass-soft)}
+  .pgrid tbody tr:last-child th, .pgrid tbody tr:last-child td{border-bottom:0}
+  .pgrid tr.focus th.rowname{color:#fff; background:var(--grass)}
+  .pgrid tr.focus td.on{background:var(--grass)}
+  .pgrid tr.dim{opacity:.32}
+  .pgrid td.ov{background:var(--tomato-soft); box-shadow:inset 0 0 0 2px var(--tomato)}
+  .ov-summary{margin:0 0 12px; font-size:13.5px; color:var(--ink); line-height:1.5}
+  .ov-summary b{color:var(--grass-dark)}
+  .pending{margin-top:12px; font-size:13px; color:var(--muted)}
+  .pending .pill{display:inline-block; font-size:13px; background:var(--paper); color:var(--muted); border-radius:8px; padding:3px 9px; margin:2px 4px 2px 0}
+
+  /* ---------- Pilotage ---------- */
+  .admin-list{display:flex; flex-direction:column; gap:8px}
+  .admin-row{display:flex; align-items:center; gap:10px; justify-content:space-between; padding:10px 12px; border:1px solid var(--line); border-radius:var(--radius-sm); background:#fff; flex-wrap:wrap}
+  .admin-row .a-info{font-size:14px}
+  .admin-row .a-info span{color:var(--muted); font-size:12.5px}
+  .admin-row .a-actions{display:flex; gap:6px}
+  .admin-row .btn{padding:7px 12px; font-size:13px}
+  .foot{color:var(--muted); font-size:12px; line-height:1.6}
+
+  .toast{position:fixed; left:50%; bottom:22px; transform:translateX(-50%) translateY(20px); background:var(--ink); color:#fff; padding:11px 18px; border-radius:10px; font-size:14px; opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; z-index:60; box-shadow:0 8px 24px rgba(0,0,0,.18)}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+  dialog.copybox{border:1px solid var(--line); border-radius:var(--radius); padding:16px; max-width:520px; width:92%; box-shadow:var(--shadow)}
+  dialog.copybox::backdrop{background:rgba(43,41,36,.35)}
+  dialog.copybox textarea{width:100%; height:280px; font-family:ui-monospace,monospace; font-size:12.5px; border:1px solid var(--line); border-radius:var(--radius-sm); padding:10px; resize:vertical}
+  dialog.copybox .dlg-actions{display:flex; justify-content:flex-end; gap:8px; margin-top:10px}
+  input[type=file]{display:none}
+
+  /* ---------- Inscription à icônes ---------- */
+  .kid-block{margin:18px 0}
+  .kid-q{font-size:16px; font-weight:700; color:var(--ink); margin-bottom:10px}
+  .kid-q.small{font-size:14px; color:var(--muted)}
+  .kid-help{font-size:13px; color:var(--muted); margin:-4px 0 10px}
+  .kid-name{font-size:18px; padding:14px; border:2px solid var(--line); border-radius:12px}
+  .kid-name:focus{border-color:var(--grass)}
+
+  .people-pick{display:flex; gap:10px; flex-wrap:wrap}
+  .ppl{flex:1 1 62px; min-width:62px; background:#fff; border:2px solid var(--line); border-radius:14px; padding:12px 6px 9px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px; transition:transform .08s, border-color .12s, background .12s; -webkit-tap-highlight-color:transparent}
+  .ppl .figs{display:flex; gap:1px; align-items:flex-end; justify-content:center; min-height:22px}
+  .ppl .figs svg{width:11px; height:15px; display:block}
+  .ppl.more .figs svg{width:21px; height:21px}
+  .ppl .pn{font-family:var(--display); font-size:19px; font-weight:600; color:var(--ink)}
+  .ppl:hover{border-color:var(--grass-light)}
+  .ppl:active{transform:scale(.95)}
+  .ppl.on{border-color:var(--grass); background:var(--grass-soft)}
+  .ppl.on .pn{color:var(--grass-dark)}
+
+  .item-row{display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap}
+  .item{position:relative; flex:1 1 96px; min-width:90px; background:#fff; border:2px solid var(--line); border-radius:16px; padding:16px 8px 12px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:6px; transition:transform .08s, border-color .12s, background .12s; -webkit-tap-highlight-color:transparent}
+  .item .ic{font-size:38px; line-height:1}
+  .item .ic svg{width:46px; height:46px; display:block}
+  .item .lab{font-size:13px; font-weight:600; color:var(--ink); text-align:center; line-height:1.2}
+  .item:hover{border-color:var(--grass-light)}
+  .item:active{transform:scale(.94)}
+  .item.on{border-color:var(--grass); background:var(--grass-soft); box-shadow:0 4px 14px rgba(74,124,63,.15)}
+  .item .cnt{position:absolute; top:-9px; right:-9px; background:var(--grass); color:#fff; font-weight:700; font-size:14px; min-width:28px; height:28px; border-radius:14px; display:flex; align-items:center; justify-content:center; padding:0 6px; box-shadow:var(--shadow)}
+  .item .minus{position:absolute; top:-9px; left:-9px; background:#fff; color:var(--tomato); border:1.5px solid var(--tomato); font-weight:700; font-size:18px; width:28px; height:28px; border-radius:14px; display:flex; align-items:center; justify-content:center; line-height:1; box-shadow:var(--shadow)}
+
+  .time-chips{display:flex; gap:8px; flex-wrap:wrap}
+  .tchip{background:#fff; border:1.5px solid var(--line); border-radius:999px; padding:9px 14px; font-size:14px; font-weight:600; color:var(--ink); cursor:pointer; font-variant-numeric:tabular-nums; -webkit-tap-highlight-color:transparent}
+  .tchip:hover{border-color:var(--grass-light)}
+  .tchip.on{background:var(--grass); border-color:var(--grass); color:#fff}
+
+  .reveal{background:transparent; border:0; color:var(--grass-dark); text-decoration:underline; text-underline-offset:3px; font-size:13.5px; font-weight:600; cursor:pointer; padding:8px 2px; margin-top:6px}
+  #adv{border-top:1px dashed var(--line); margin-top:8px; padding-top:6px}
+  .kid-validate{margin-top:22px; display:flex; flex-direction:column; gap:10px}
+  .btn-save{background:var(--grass); color:#fff; border:0; border-radius:14px; padding:16px; font-size:18px; font-weight:700; cursor:pointer; box-shadow:0 4px 16px rgba(74,124,63,.25); transition:transform .08s, background .12s}
+  .btn-save:hover{background:var(--grass-dark)}
+  .btn-save:active{transform:scale(.98)}
+
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+  @media print{
+    body{background:#fff}
+    .topbar,.tabs,.toolbar,.edit-pick,.no-print{display:none!important}
+    .card{box-shadow:none; border:1px solid #ccc; break-inside:avoid}
+    .ev-banner{background:#fff; border:1px solid #ccc}
+    .who,.cat-title{color:#000}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="gingham" aria-hidden="true"></div>
+
+  <div class="topbar">
+    <div class="brand" id="brandTitle">Pique-nique</div>
+    <nav class="tabs" role="tablist">
+      <button data-tab="participer" type="button">Participer</button>
+      <button data-tab="recap" type="button">Récapitulatif</button>
+      <button data-tab="pilotage" type="button">Pilotage</button>
+    </nav>
+  </div>
+
+  <!-- ============ PARTICIPER ============ -->
+  <section class="page" id="page-participer">
+    <div class="ev-banner"></div>
+    <section class="card">
+      <h2>Je m'inscris</h2>
+      <p class="sub">Tape sur les images de ce que tu apportes. C'est tout !</p>
+
+      <div class="edit-pick">
+        <label for="editPick">Tu t'es déjà inscrit ?</label>
+        <select id="editPick"></select>
+      </div>
+      <div id="editBanner" class="edit-banner" hidden></div>
+
+      <div class="kid-block">
+        <div class="kid-q">Ton prénom</div>
+        <input type="text" id="nom" class="kid-name" autocomplete="off" placeholder="Écris ton prénom ici" />
+      </div>
+
+      <div class="kid-block">
+        <div class="kid-q">Vous venez à combien ?</div>
+        <div class="people-pick" id="peoplePick">
+          <button class="ppl" data-tetes="1" type="button"><span class="figs">🧑</span><span class="pn">1</span></button>
+          <button class="ppl" data-tetes="2" type="button"><span class="figs">🧑🧑</span><span class="pn">2</span></button>
+          <button class="ppl" data-tetes="3" type="button"><span class="figs">🧑🧑🧑</span><span class="pn">3</span></button>
+          <button class="ppl" data-tetes="4" type="button"><span class="figs">🧑🧑🧑🧑</span><span class="pn">4</span></button>
+          <button class="ppl more" data-more type="button"><span class="figs">➕</span><span class="pn">5 +</span></button>
+        </div>
+      </div>
+
+      <div class="kid-block">
+        <div class="kid-q">Qu'est-ce que tu apportes ?</div>
+        <div class="kid-help">Appuie sur une image à chaque fois que tu en apportes une.</div>
+        <div id="itemGrid"></div>
+      </div>
+
+      <button class="reveal" id="advToggle" type="button" aria-expanded="false">▾ Préciser mon horaire ou ajouter autre chose</button>
+      <div id="adv" hidden>
+        <div class="kid-block">
+          <div class="kid-q small">Tu arrives vers ?</div>
+          <div id="arriveeChips" class="time-chips"></div>
+        </div>
+        <div class="kid-block">
+          <div class="kid-q small">Tu repars vers ?</div>
+          <div id="departChips" class="time-chips"></div>
+        </div>
+        <div class="kid-block">
+          <div class="kid-q small">Autre chose à apporter ?</div>
+          <div id="apportsList"></div>
+          <button class="btn link" id="addApport" type="button">+ Ajouter autre chose</button>
+        </div>
+      </div>
+
+      <div class="kid-validate">
+        <button class="btn-save" id="save" type="button">C'est noté !</button>
+        <button class="btn ghost" id="cancelEdit" type="button" hidden>Annuler</button>
+      </div>
+    </section>
+  </section>
+
+  <!-- ============ RÉCAPITULATIF ============ -->
+  <section class="page" id="page-recap" hidden>
+    <div class="ev-banner"></div>
+
+    <section class="card">
+      <div class="menu-head">
+        <div>
+          <h2>Le menu commun</h2>
+          <p class="sub" id="menuSub">Ce qui est déjà prévu, par catégorie.</p>
+        </div>
+        <div class="convives" id="convives"></div>
+      </div>
+      <div class="toolbar">
+        <button class="btn ghost" id="copyShare" type="button">Copier (version imagée)</button>
+        <button class="btn ghost" id="print" type="button">Imprimer</button>
+      </div>
+      <div id="menu"></div>
+      <div id="gaps"></div>
+    </section>
+
+    <section class="card">
+      <h2>Qui est là, et quand</h2>
+      <p class="sub">Chaque colonne = 30 min. Choisis un prénom pour voir qui chevauche avec lui.</p>
+      <div class="edit-pick">
+        <label for="gridFocus">Chevauchements de</label>
+        <select id="gridFocus"></select>
+      </div>
+      <div id="ovSummary" class="ov-summary"></div>
+      <div class="grid-scroll"><div id="grid"></div></div>
+      <div id="gridPending" class="pending"></div>
+    </section>
+  </section>
+
+  <!-- ============ PILOTAGE ============ -->
+  <section class="page" id="page-pilotage" hidden>
+    <section class="card">
+      <h2>Créer / configurer l'événement</h2>
+      <p class="sub">Onglet organisateur — ces réglages s'appliquent à tout le monde.</p>
+      <div class="meta">
+        <div class="field" style="flex:1 1 100%">
+          <label for="titre">Titre</label>
+          <input type="text" id="titre" value="Pique-nique — auberge espagnole" />
+        </div>
+        <div class="field">
+          <label for="date">Date</label>
+          <input type="text" id="date" placeholder="ex. dim. 6 juillet" />
+        </div>
+        <div class="field">
+          <label for="lieu">Lieu</label>
+          <input type="text" id="lieu" placeholder="ex. Bois de la Cambre" />
+        </div>
+        <div class="field horaire">
+          <div class="field">
+            <label for="debut">Début de l'événement</label>
+            <input type="time" id="debut" value="12:00" step="1800" />
+          </div>
+          <span class="sep">→</span>
+          <div class="field">
+            <label for="fin">Fin</label>
+            <input type="time" id="fin" value="16:00" step="1800" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="attendus">Convives attendus</label>
+          <input type="number" id="attendus" min="0" max="999" inputmode="numeric" placeholder="ex. 18" />
+        </div>
+        <div class="field note">
+          <label for="note">Petit mot (facultatif)</label>
+          <input type="text" id="note" placeholder="ex. Pensez à une couverture" />
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Participants</h2>
+      <p class="sub" id="adminSub"></p>
+      <div id="adminList" class="admin-list"></div>
+    </section>
+
+    <section class="card">
+      <h2>Données</h2>
+      <div class="toolbar">
+        <button class="btn ghost" id="export" type="button">Exporter (.json)</button>
+        <button class="btn ghost" id="importBtn" type="button">Importer</button>
+        <input type="file" id="importFile" accept="application/json,.json" />
+        <button class="btn danger" id="reset" type="button">Tout effacer</button>
+      </div>
+      <p class="foot" id="foot"></p>
+    </section>
+  </section>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<dialog class="copybox" id="copyDlg">
+  <p style="margin:0 0 8px; font-weight:600">Sélectionne et copie le texte :</p>
+  <textarea id="copyArea" readonly></textarea>
+  <div class="dlg-actions"><button class="btn ghost" id="copyClose" type="button">Fermer</button></div>
+</dialog>
+
+<script>
+"use strict";
+
+/* ===== Stockage : 1. Claude partagé  2. PHP (InfinityFree / NAS)  3. localStorage  4. mémoire ===== */
+const STORE_KEY = "pique-nique:data", SHARED = true, _mem = {};
+const hasShared = !!(window.storage && window.storage.get && window.storage.set);
+const PHP_API = './api.php';  // chemin relatif à la page HTML
+let phpOk = null;             // null = non testé | true = dispo | false = absent/erreur
+
+async function phpGet(){
+  const r = await fetch(PHP_API, {cache:'no-store'});
+  if(!r.ok) throw new Error(r.status);
+  const t = await r.text(); phpOk = true;
+  return (t === 'null' || t === '' || t === 'false') ? null : t;
+}
+async function phpSet(v){
+  const r = await fetch(PHP_API, {method:'POST', headers:{'Content-Type':'application/json'}, body:v});
+  if(!r.ok) throw new Error(r.status);
+  phpOk = true;
+}
+
+const store = {
+  async get(){
+    if(hasShared){ try{ const r = await window.storage.get(STORE_KEY, SHARED); return r ? r.value : null; }catch(e){ return null; } }
+    if(phpOk !== false){ try{ return await phpGet(); }catch(e){ phpOk = false; } }
+    try{ return localStorage.getItem(STORE_KEY); }catch(e){}
+    return _mem[STORE_KEY] ?? null;
+  },
+  async set(v){
+    if(hasShared){ try{ await window.storage.set(STORE_KEY, v, SHARED); return; }catch(e){} }
+    if(phpOk !== false){ try{ await phpSet(v); return; }catch(e){ phpOk = false; } }
+    try{ localStorage.setItem(STORE_KEY, v); return; }catch(e){}
+    _mem[STORE_KEY] = v;
+  }
+};
+
+/* ===== Catégories ===== */
+const CAT_FOOD = ["Apéro & à grignoter","Entrée","Plat principal","Salade","Pain & tartinades","Fromage","Dessert","Boisson sans alcool","Boisson alcoolisée","Autre (nourriture)"];
+const CAT_MAT  = ["Verres & gobelets","Assiettes","Couverts","Serviettes & papier","Nappe & couvertures","Chaises & sièges","Sacs poubelle","Autre matériel"];
+const CATEGORIES = [...CAT_FOOD, ...CAT_MAT];
+const isMaterial = c => CAT_MAT.includes(c);
+const shortCat = c => c.split(" & ")[0].split(" (")[0];
+const PER_PERSON_MAT = ["Verres & gobelets","Assiettes","Couverts","Chaises & sièges"]; // 1 par convive
+const OTHER_ESS_MAT  = ["Sacs poubelle"];
+const ESS_FOOD = ["Plat principal","Salade","Pain & tartinades","Dessert","Boisson sans alcool"];
+const CAT_EMOJI = {
+  "Apéro & à grignoter":"🫒","Entrée":"🥗","Plat principal":"🍲","Salade":"🥬","Pain & tartinades":"🥖",
+  "Fromage":"🧀","Dessert":"🍰","Boisson sans alcool":"🥤","Boisson alcoolisée":"🍷","Autre (nourriture)":"🍽️",
+  "Verres & gobelets":"🥛","Assiettes":"🍽️","Couverts":"🍴","Serviettes & papier":"🧻",
+  "Nappe & couvertures":"🧺","Chaises & sièges":"🪑","Sacs poubelle":"🗑️","Autre matériel":"📦"
+};
+
+/* ===== État ===== */
+function blankState(){
+  return {
+    v:2,
+    event:{ titre:"Pique-nique — auberge espagnole", date:"", lieu:"", debut:"12:00", fin:"16:00", note:"", attendus:"" },
+    people:[],  // { id, nom, arrivee, depart, tetes }
+    items:[]    // { id, personId, categorie, plat, qty }
+  };
+}
+let state = blankState();
+let editingId = null;
+let gridFocus = "";
+let formTetes = 1, formArrivee = "", formDepart = "";
+let counts = {};
+
+/* Items proposés à l'inscription simple (icône -> catégorie/plat du modèle) */
+const SIMPLE_ITEMS = [
+  { key:"chips",   emoji:"🍟", label:"Chips",        categorie:"Apéro & à grignoter", plat:"Chips" },
+  { key:"amuse",   emoji:"🥨", label:"Amuse-gueule", categorie:"Apéro & à grignoter", plat:"Amuse-gueule" },
+  { key:"soft",    emoji:"🥤", label:"Boisson\nsans alcool", categorie:"Boisson sans alcool", plat:"Boisson sans alcool" },
+  { key:"alc",     emoji:"🍷", label:"Boisson\nalcoolisée",  categorie:"Boisson alcoolisée",  plat:"Boisson alcoolisée" },
+  { key:"verres",  emoji:"🥛", label:"Verres",       categorie:"Verres & gobelets",   plat:"Verres" },
+  { key:"serv",    emoji:"🧻", label:"Serviettes",   categorie:"Serviettes & papier", plat:"Serviettes" },
+  { key:"chaises", emoji:"🪑", label:"Chaises",      categorie:"Chaises & sièges",    plat:"Chaises" }
+];
+const SIMPLE_LINES = [ ["chips","amuse"], ["soft","alc"], ["verres","serv","chaises"] ];
+const simpleByKey = k => SIMPLE_ITEMS.find(i=>i.key===k);
+
+/* Icônes kawaii (SVG inline, rendu identique partout, hors-ligne) */
+const SIMPLE_SVG = {
+  chips:'<svg viewBox="0 0 64 64"><rect x="16" y="15" width="32" height="39" rx="9" fill="#F4C95D"/><rect x="16" y="15" width="32" height="7" rx="3.5" fill="#E0A93B"/><rect x="16" y="47" width="32" height="7" rx="3.5" fill="#E0A93B"/><circle cx="27" cy="34" r="2.2" fill="#4a3b34"/><circle cx="37" cy="34" r="2.2" fill="#4a3b34"/><ellipse cx="24" cy="39" rx="3" ry="2" fill="#F58BA0" opacity=".55"/><ellipse cx="40" cy="39" rx="3" ry="2" fill="#F58BA0" opacity=".55"/><path d="M29 38 q3 3 6 0" stroke="#4a3b34" stroke-width="1.7" fill="none" stroke-linecap="round"/></svg>',
+  amuse:'<svg viewBox="0 0 64 64"><circle cx="32" cy="33" r="18" fill="#E7C067"/><circle cx="32" cy="33" r="18" fill="none" stroke="#D2A744" stroke-width="2"/><circle cx="23" cy="25" r="1.4" fill="#C18F34"/><circle cx="41" cy="24" r="1.4" fill="#C18F34"/><circle cx="44" cy="38" r="1.4" fill="#C18F34"/><circle cx="22" cy="41" r="1.4" fill="#C18F34"/><circle cx="27" cy="33" r="2.2" fill="#4a3b34"/><circle cx="37" cy="33" r="2.2" fill="#4a3b34"/><ellipse cx="24" cy="38" rx="3" ry="2" fill="#F58BA0" opacity=".5"/><ellipse cx="40" cy="38" rx="3" ry="2" fill="#F58BA0" opacity=".5"/><path d="M29 37 q3 3 6 0" stroke="#4a3b34" stroke-width="1.7" fill="none" stroke-linecap="round"/></svg>',
+  soft:'<svg viewBox="0 0 64 64"><rect x="33" y="8" width="4" height="20" rx="2" fill="#E8836B" transform="rotate(10 35 18)"/><path d="M21 26 H43 L40 55 Q39.7 57 38 57 H26 Q24.3 57 24 55 Z" fill="#7FD1C1"/><rect x="19" y="22" width="26" height="6" rx="3" fill="#54B6A4"/><circle cx="28" cy="40" r="2.3" fill="#fff"/><circle cx="36" cy="40" r="2.3" fill="#fff"/><circle cx="28" cy="40" r="1.1" fill="#33514b"/><circle cx="36" cy="40" r="1.1" fill="#33514b"/><ellipse cx="25" cy="45" rx="2.6" ry="1.7" fill="#F58BA0" opacity=".5"/><ellipse cx="39" cy="45" rx="2.6" ry="1.7" fill="#F58BA0" opacity=".5"/><path d="M30 44 q2 2.4 4 0" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>',
+  alc:'<svg viewBox="0 0 64 64"><path d="M23 15 H41 L37 31 Q32 36 27 31 Z" fill="#C24E72"/><path d="M23 15 H41 L40 19 H24 Z" fill="#D96A8C"/><rect x="30.8" y="34" width="2.4" height="13" fill="#C9B7C1"/><rect x="24" y="47" width="16" height="3" rx="1.5" fill="#C9B7C1"/><circle cx="28" cy="23" r="2" fill="#fff"/><circle cx="36" cy="23" r="2" fill="#fff"/><circle cx="28" cy="23" r="1" fill="#4a2a36"/><circle cx="36" cy="23" r="1" fill="#4a2a36"/><path d="M29.5 26.5 q2.5 2 5 0" stroke="#fff" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>',
+  verres:'<svg viewBox="0 0 64 64"><path d="M23 17 H41 L38.5 53 Q38.4 55 36.5 55 H27.5 Q25.6 55 25.5 53 Z" fill="#E3F3FA" stroke="#A9D6E8" stroke-width="2"/><path d="M25 36 H39 L37.6 51 Q37.5 53 36 53 H28 Q26.5 53 26.4 51 Z" fill="#BFE3F2"/><circle cx="28" cy="30" r="2.2" fill="#4a3b34"/><circle cx="36" cy="30" r="2.2" fill="#4a3b34"/><ellipse cx="25" cy="35" rx="2.6" ry="1.7" fill="#F58BA0" opacity=".5"/><ellipse cx="39" cy="35" rx="2.6" ry="1.7" fill="#F58BA0" opacity=".5"/><path d="M30 34 q2 2.2 4 0" stroke="#4a3b34" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>',
+  serv:'<svg viewBox="0 0 64 64"><rect x="17" y="19" width="30" height="30" rx="5" fill="#F4A9B8"/><path d="M39 19 H47 V27 Z" fill="#E07F97"/><rect x="21" y="23" width="18" height="22" rx="3" fill="none" stroke="#fff" stroke-width="1.3" stroke-dasharray="2.5 2.5"/><circle cx="27" cy="34" r="2.1" fill="#fff"/><circle cx="35" cy="34" r="2.1" fill="#fff"/><circle cx="27" cy="34" r="1" fill="#7a3a48"/><circle cx="35" cy="34" r="1" fill="#7a3a48"/><path d="M28.5 37.5 q2.5 2 5 0" stroke="#fff" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>',
+  chaises:'<svg viewBox="0 0 64 64"><rect x="22" y="13" width="20" height="22" rx="6" fill="#7CA8C9"/><rect x="19" y="33" width="26" height="7" rx="3.5" fill="#5E8FB5"/><rect x="22" y="39" width="4.5" height="14" rx="2.2" fill="#5E8FB5"/><rect x="37.5" y="39" width="4.5" height="14" rx="2.2" fill="#5E8FB5"/><circle cx="28" cy="23" r="2.2" fill="#fff"/><circle cx="36" cy="23" r="2.2" fill="#fff"/><circle cx="28" cy="23" r="1.1" fill="#2e3f4d"/><circle cx="36" cy="23" r="1.1" fill="#2e3f4d"/><ellipse cx="25" cy="28" rx="2.6" ry="1.7" fill="#F58BA0" opacity=".5"/><ellipse cx="39" cy="28" rx="2.6" ry="1.7" fill="#F58BA0" opacity=".5"/><path d="M30 27 q2 2.2 4 0" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>'
+};
+const PERSON_SVG = '<svg viewBox="0 0 24 32"><path d="M4 31 Q4 19 12 19 Q20 19 20 31 Z" fill="#7FD1C1"/><circle cx="12" cy="10" r="7.5" fill="#F2C9A0"/><circle cx="9.5" cy="10" r="1.2" fill="#4a3b34"/><circle cx="14.5" cy="10" r="1.2" fill="#4a3b34"/><ellipse cx="7.6" cy="12.4" rx="1.6" ry="1.1" fill="#F58BA0" opacity=".6"/><ellipse cx="16.4" cy="12.4" rx="1.6" ry="1.1" fill="#F58BA0" opacity=".6"/><path d="M10.2 12.6 q1.8 1.4 3.6 0" stroke="#4a3b34" stroke-width=".9" fill="none" stroke-linecap="round"/></svg>';
+const PLUS_SVG = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#F4C95D"/><path d="M12 7 V17 M7 12 H17" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/></svg>';
+
+const uid = () => Math.random().toString(36).slice(2,9);
+const norm = s => (s||"").trim().toLowerCase();
+const esc = s => (s||"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const $ = sel => document.querySelector(sel);
+
+function normalizeState(s){
+  const out = blankState();
+  if(s && s.event) Object.assign(out.event, s.event);
+  if(Array.isArray(s.people)) out.people = s.people.filter(p=>p&&p.nom!=null).map(p=>({
+    id:p.id||uid(), nom:String(p.nom), arrivee:p.arrivee||"", depart:p.depart||"",
+    tetes:(parseInt(p.tetes,10)>0?parseInt(p.tetes,10):1)
+  }));
+  if(Array.isArray(s.items)) out.items = s.items.filter(i=>i&&i.plat).map(i=>({
+    id:i.id||uid(), personId:i.personId, categorie:i.categorie, plat:String(i.plat),
+    qty:(parseInt(i.qty,10)>0?parseInt(i.qty,10):null)
+  }));
+  return out;
+}
+
+/* mutation atomique : relit l'état frais avant d'écrire */
+let saving = Promise.resolve();
+function mutate(fn){
+  saving = saving.then(async () => {
+    const raw = await store.get();
+    let fresh = blankState();
+    if(raw){ try{ fresh = normalizeState(JSON.parse(raw)); }catch(e){} }
+    fn(fresh);
+    state = fresh;
+    await store.set(JSON.stringify(fresh));
+    renderAll();
+  });
+  return saving;
+}
+
+/* ===== Temps ===== */
+function toMin(hhmm){ const [h,m]=(hhmm||"0:0").split(":").map(Number); return (h*60)+(m||0); }
+function toHHMM(min){ const h=Math.floor(min/60)%24, m=min%60; return String(h).padStart(2,"0")+":"+String(m).padStart(2,"0"); }
+function slots(){
+  const a=toMin(state.event.debut), b=toMin(state.event.fin), out=[];
+  if(b<=a || b-a>16*60){ if(state.event.debut) out.push(state.event.debut); return out; }
+  for(let t=a; t<=b; t+=30) out.push(toHHMM(t));
+  return out;
+}
+function cellsList(){ const b=slots(), c=[]; for(let i=0;i<b.length-1;i++) c.push(b[i]); return c; } // débuts de tranche
+function windowOf(p){ if(!p.arrivee) return null; const a=toMin(p.arrivee), d=p.depart?toMin(p.depart):toMin(state.event.fin); return [a, Math.max(a,d)]; }
+function overlap(p1,p2){ const w1=windowOf(p1), w2=windowOf(p2); if(!w1||!w2) return null; const s=Math.max(w1[0],w2[0]), e=Math.min(w1[1],w2[1]); return e>s?[s,e]:null; }
+function presentInCell(p, cellStart){ const w=windowOf(p); if(!w) return false; const cs=toMin(cellStart); return w[0]<=cs && cs<w[1]; }
+
+/* ===== Rendu de l'inscription à icônes ===== */
+function renderItemGrid(){
+  const box=$("#itemGrid"); if(!box) return;
+  let html="";
+  for(const line of SIMPLE_LINES){
+    html+=`<div class="item-row">`;
+    for(const key of line){
+      const it=simpleByKey(key), n=counts[key]||0;
+      html+=`<button class="item${n>0?" on":""}" data-key="${key}" type="button">
+        <span class="ic">${SIMPLE_SVG[key]||it.emoji}</span>
+        <span class="lab">${esc(it.label).replace(/\n/g,"<br>")}</span>
+        ${n>0?`<span class="cnt">×${n}</span><span class="minus" data-minus="${key}">−</span>`:""}
+      </button>`;
+    }
+    html+=`</div>`;
+  }
+  box.innerHTML=html;
+}
+function renderPeople(){
+  document.querySelectorAll("#peoplePick .ppl").forEach(b=>{
+    if(b.dataset.more!==undefined){ b.classList.toggle("on", formTetes>4); b.querySelector(".pn").textContent = formTetes>4?String(formTetes):"5 +"; }
+    else b.classList.toggle("on", parseInt(b.dataset.tetes,10)===formTetes);
+  });
+}
+function populatePeopleIcons(){
+  document.querySelectorAll("#peoplePick .ppl").forEach(b=>{
+    const figs=b.querySelector(".figs"); if(!figs) return;
+    if(b.dataset.more!==undefined) figs.innerHTML=PLUS_SVG;
+    else figs.innerHTML=PERSON_SVG.repeat(parseInt(b.dataset.tetes,10)||1);
+  });
+}
+function renderTimeChips(){
+  const opts=slots();
+  const build=(box, sel, none)=>{ if(!box) return;
+    box.innerHTML = `<button class="tchip${sel===""?" on":""}" data-t="" type="button">${none}</button>` +
+      opts.map(t=>`<button class="tchip${sel===t?" on":""}" data-t="${t}" type="button">${t}</button>`).join("");
+  };
+  build($("#arriveeChips"), formArrivee, "Pas sûr");
+  build($("#departChips"), formDepart, "À la fin");
+}
+function renderSimple(){ renderItemGrid(); renderPeople(); renderTimeChips(); }
+function setAdv(on){
+  const a=$("#adv"); if(!a) return; a.hidden=!on;
+  const t=$("#advToggle"); if(t){ t.setAttribute("aria-expanded", on?"true":"false"); t.textContent=(on?"▴ ":"▾ ")+"Préciser mon horaire ou ajouter autre chose"; }
+}
+
+/* ===== Données dérivées ===== */
+function platsByCat(cat){ return state.items.filter(i=>i.categorie===cat); }
+function personName(id){ const p=state.people.find(p=>p.id===id); return p?p.nom:"?"; }
+function sumQty(items){ return items.reduce((n,i)=> n+(Number(i.qty)>0?Number(i.qty):0), 0); }
+function headcount(){
+  const confirmes = state.people.reduce((n,p)=>n+(p.tetes>0?p.tetes:1),0);
+  const inscrits = state.people.length;
+  const attendusSaisi = parseInt(state.event.attendus,10)||0;
+  return { confirmes, inscrits, attendusSaisi, effective:Math.max(attendusSaisi, confirmes) };
+}
+
+/* ===== Rendu : bannière / formulaire config ===== */
+function evMeta(){ const e=state.event; return [e.date, e.lieu, (e.debut&&e.fin)?`${e.debut}–${e.fin}`:""].filter(Boolean).join(" · "); }
+function renderBanner(){
+  const titre = state.event.titre || "Pique-nique", meta = evMeta();
+  $("#brandTitle").textContent = titre;
+  document.querySelectorAll(".ev-banner").forEach(el=>{
+    el.innerHTML = `<span class="b-title">${esc(titre)}</span>` + (meta?`<span class="b-meta">${esc(meta)}</span>`:"") + (state.event.note?`<span class="b-note">${esc(state.event.note)}</span>`:"");
+  });
+}
+function setIfChanged(el, val){ if(el && document.activeElement!==el && el.value!==(val??"")) el.value = val??""; }
+function renderEventForm(){
+  [["titre","titre"],["date","date"],["lieu","lieu"],["debut","debut"],["fin","fin"],["attendus","attendus"],["note","note"]]
+    .forEach(([id,k])=> setIfChanged($("#"+id), state.event[k]));
+}
+
+/* ===== Rendu : menu + couverture ===== */
+function renderConvives(){
+  const {confirmes, inscrits, attendusSaisi, effective} = headcount();
+  const el = $("#convives"); if(!el) return;
+  if(!inscrits && !attendusSaisi){ el.innerHTML=""; return; }
+  let txt = `<b>${confirmes}</b> convives · ${inscrits} inscrit${inscrits>1?"s":""}`;
+  if(attendusSaisi) txt += confirmes<=attendusSaisi ? ` · ${attendusSaisi} attendus` : ` · attendus relevés à <b>${effective}</b>`;
+  el.innerHTML = txt;
+}
+function renderMenu(){
+  const box=$("#menu"), nI=state.items.length, hc=headcount();
+  $("#menuSub").textContent = nI ? `${hc.inscrits} inscrit${hc.inscrits>1?"s":""} · ${nI} chose${nI>1?"s":""} à apporter.` : "Ce qui est déjà prévu, par catégorie.";
+
+  if(!nI){ box.innerHTML = `<div class="empty">Rien n'est encore prévu — ajoute le premier plat depuis « Participer ».</div>`; }
+  else{
+    let html="";
+    for(const cat of CATEGORIES){
+      const items=platsByCat(cat); if(!items.length) continue;
+      let countLabel=`· ${items.length}`, countCls="ct-count";
+      if(isMaterial(cat)){
+        const t=sumQty(items);
+        if(PER_PERSON_MAT.includes(cat) && hc.effective>0){ countLabel=`· ${t} / ${hc.effective}`; countCls="ct-count "+(t>=hc.effective?"ct-ok":"ct-short"); }
+        else if(t){ countLabel=`· ${t} au total`; }
+      }
+      html += `<div class="cat-block"><div class="cat-title">${esc(cat)} <span class="${countCls}">${countLabel}</span></div>`;
+      for(const it of items){
+        const label = it.qty ? `${it.qty} × ${esc(it.plat)}` : esc(it.plat);
+        html += `<div class="menu-item"><span class="plat">${label}</span><span class="lead"></span><span class="who">${esc(personName(it.personId))}</span></div>`;
+      }
+      html += `</div>`;
+    }
+    box.innerHTML = html;
+  }
+  renderConvives();
+
+  // manques
+  const gapsBox=$("#gaps");
+  if(nI){
+    const manqFood = ESS_FOOD.filter(c=>!platsByCat(c).length);
+    const eff = hc.effective, matChips=[];
+    for(const cat of PER_PERSON_MAT){
+      if(eff<=0) break;
+      const t=sumQty(platsByCat(cat));
+      if(t<eff) matChips.push(t>0 ? `${cat} · manque ${eff-t}` : `${cat} · ${eff-t} à prévoir`);
+    }
+    for(const cat of OTHER_ESS_MAT){ if(!platsByCat(cat).length) matChips.push(cat); }
+    const grp = (lbl, arr) => arr.length ? `<div class="gaps"><div class="gaps-lbl">${lbl}</div><div class="chips">${arr.map(c=>`<span class="chip-gap">${esc(c)}</span>`).join("")}</div></div>` : "";
+    gapsBox.innerHTML = grp("À compléter (nourriture)", manqFood) + grp("À prévoir (matériel)", matChips);
+  } else gapsBox.innerHTML = "";
+}
+
+/* ===== Rendu : grille de présence + chevauchements ===== */
+function renderGrid(){
+  const grid=$("#grid"); if(!grid) return;
+  const cells=cellsList();
+  const withT=state.people.filter(p=>p.arrivee).sort((a,b)=> toMin(a.arrivee)-toMin(b.arrivee) || a.nom.localeCompare(b.nom));
+
+  // sélecteur de focus
+  const sel=$("#gridFocus");
+  if(sel && document.activeElement!==sel){
+    sel.innerHTML = `<option value="">— Vue d'ensemble —</option>` + withT.map(p=>`<option value="${p.id}">${esc(p.nom)}</option>`).join("");
+    if([...sel.options].some(o=>o.value===gridFocus)) sel.value=gridFocus; else { gridFocus=""; sel.value=""; }
+  }
+
+  if(!cells.length){ grid.innerHTML = `<div class="empty" style="padding:18px">Définis un début et une fin d'événement dans « Pilotage ».</div>`; $("#ovSummary").innerHTML=""; $("#gridPending").innerHTML=""; return; }
+  if(!withT.length){ grid.innerHTML = `<div class="empty" style="padding:18px">Aucun horaire renseigné pour l'instant.</div>`; }
+  else{
+    const focusP = withT.find(p=>p.id===gridFocus) || null;
+    const fw = focusP ? windowOf(focusP) : null;
+
+    let head = `<tr><th class="corner"></th>` + cells.map(c=>`<th>${c}</th>`).join("") + `</tr>`;
+    let body = "";
+    for(const p of withT){
+      const isFocus = focusP && p.id===focusP.id;
+      const ov = (focusP && !isFocus) ? overlap(focusP, p) : null;
+      const dim = (focusP && !isFocus && !ov) ? " dim" : "";
+      const cls = isFocus ? " focus" : dim;
+      const dep = p.depart || state.event.fin;
+      const tt = p.tetes>1 ? ` · ${p.tetes}` : "";
+      let cellsHtml="";
+      for(const c of cells){
+        const on = presentInCell(p, c);
+        let cc = on ? "on" : "";
+        if(on && ov && !isFocus){ const cs=toMin(c); if(fw && cs>=fw[0] && cs<fw[1]) cc += " ov"; }
+        cellsHtml += `<td class="${cc}"></td>`;
+      }
+      body += `<tr class="${cls.trim()}"><th class="rowname">${esc(p.nom)}<span>${p.arrivee}–${dep}${tt}</span></th>${cellsHtml}</tr>`;
+    }
+    grid.innerHTML = `<table class="pgrid"><thead>${head}</thead><tbody>${body}</tbody></table>`;
+
+    // résumé chevauchements
+    const ov=$("#ovSummary");
+    if(focusP){
+      const others = withT.filter(p=>p.id!==focusP.id).map(p=>({p, o:overlap(focusP,p)})).filter(x=>x.o);
+      const fdep = focusP.depart || state.event.fin;
+      if(others.length){
+        ov.innerHTML = `Présent·es en même temps que <b>${esc(focusP.nom)}</b> (${focusP.arrivee}–${fdep}) : ` +
+          others.map(x=>`${esc(x.p.nom)} <span style="color:var(--muted)">(${toHHMM(x.o[0])}–${toHHMM(x.o[1])})</span>`).join(", ") + ".";
+      } else {
+        ov.innerHTML = `Personne ne chevauche <b>${esc(focusP.nom)}</b> pour l'instant.`;
+      }
+    } else $("#ovSummary").innerHTML = "";
+  }
+
+  // sans horaire
+  const pend=state.people.filter(p=>!p.arrivee);
+  $("#gridPending").innerHTML = pend.length ? `Horaire à confirmer : ${pend.map(p=>`<span class="pill">${esc(p.nom)}</span>`).join("")}` : "";
+}
+
+/* ===== Rendu : pilotage ===== */
+function renderAdmin(){
+  const box=$("#adminList"); if(!box) return;
+  const hc=headcount();
+  $("#adminSub").textContent = state.people.length ? `${state.people.length} inscrit${state.people.length>1?"s":""} · ${hc.confirmes} convives.` : "Personne pour l'instant.";
+  if(!state.people.length){ box.innerHTML = `<div class="empty">Les participations apparaîtront ici.</div>`; return; }
+  const sorted=[...state.people].sort((a,b)=> (a.arrivee?toMin(a.arrivee):9999)-(b.arrivee?toMin(b.arrivee):9999) || a.nom.localeCompare(b.nom));
+  box.innerHTML = sorted.map(p=>{
+    const n=state.items.filter(i=>i.personId===p.id).length;
+    const win = p.arrivee ? `${p.arrivee}–${p.depart||state.event.fin}` : "horaire à confirmer";
+    const t = p.tetes>1?` · ${p.tetes} convives`:"";
+    return `<div class="admin-row"><div class="a-info">${esc(p.nom)} <span>${win}${t} · ${n} apport${n>1?"s":""}</span></div>
+      <div class="a-actions"><button class="btn ghost" data-edit="${p.id}" type="button">Modifier</button><button class="btn danger" data-del="${p.id}" type="button">Retirer</button></div></div>`;
+  }).join("");
+}
+
+function renderEditSelector(){
+  const sel=$("#editPick"); if(!sel || document.activeElement===sel) return;
+  const prev=sel.value;
+  sel.innerHTML = `<option value="">— nouvelle participation —</option>` + state.people.map(p=>`<option value="${p.id}">Modifier : ${esc(p.nom)}</option>`).join("");
+  sel.value = (editingId && [...sel.options].some(o=>o.value===editingId)) ? editingId : ([...sel.options].some(o=>o.value===prev)?prev:"");
+}
+function renderFoot(){
+  const el=$("#foot"); if(!el) return;
+  let txt, cls="";
+  if(hasShared){
+    txt = "🟢 Mode Claude — liste partagée en direct.";
+  } else if(phpOk === true){
+    txt = "🟢 Mode serveur (api.php) — liste partagée en direct pour tous les participants.";
+  } else if(phpOk === false){
+    txt = "🟡 api.php non disponible — données locales uniquement (ce navigateur). Vérifier que api.php et data.json sont bien uploadés avec les bons droits.";
+    cls = "color:var(--tomato)";
+  } else {
+    txt = "Détection du mode de stockage…";
+  }
+  el.innerHTML = `<span style="${cls}">${txt}</span>`;
+}
+
+function renderAll(){
+  renderBanner(); renderEventForm(); renderSimple();
+  renderMenu(); renderGrid(); renderAdmin(); renderEditSelector(); renderFoot(); refreshHints();
+}
+
+/* ===== Formulaire d'apports ===== */
+function catSelectHTML(){
+  const g=(label,arr)=>`<optgroup label="${esc(label)}">`+arr.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("")+`</optgroup>`;
+  return `<select class="apCat" aria-label="Catégorie">${g("Nourriture & boissons",CAT_FOOD)}${g("Matériel",CAT_MAT)}</select>`;
+}
+function apportRowHTML(){
+  return `<div class="apport">
+    <div class="col cat">${catSelectHTML()}</div>
+    <div class="col qty"><input type="number" class="apQty" min="1" max="999" inputmode="numeric" placeholder="Qté" aria-label="Quantité (facultatif)" /></div>
+    <div class="col plat"><input type="text" class="apPlat" list="platList" placeholder="ex. taboulé, gobelets, couverts…" autocomplete="off" aria-label="Plat, boisson ou matériel" /><div class="hint"></div></div>
+    <button class="del" type="button" title="Retirer cette ligne">×</button>
+  </div>`;
+}
+function addApportRow(){
+  const wrap=document.createElement("div"); wrap.innerHTML=apportRowHTML();
+  const row=wrap.firstElementChild;
+  $("#apportsList").appendChild(row);
+  row.querySelector(".apCat").addEventListener("change", ()=>updateRowHint(row));
+  row.querySelector(".apPlat").addEventListener("input", ()=>updateRowHint(row));
+  row.querySelector(".del").addEventListener("click", ()=>{ row.remove(); if(!$("#apportsList").children.length) addApportRow(); });
+  updateRowHint(row);
+  return row;
+}
+function updateRowHint(row){
+  const cat=row.querySelector(".apCat").value, platVal=norm(row.querySelector(".apPlat").value), hint=row.querySelector(".hint");
+  const existing=platsByCat(cat);
+  const labels=existing.map(i=>esc(i.qty?`${i.qty}× ${i.plat}`:i.plat)).slice(0,6).join(" · ");
+  if(isMaterial(cat)){
+    hint.className="hint";
+    if(existing.length){ const tot=sumQty(existing); hint.innerHTML=`Déjà prévu : <b>${labels}</b>`+(tot?` — ${tot} au total`:""); }
+    else hint.innerHTML=`Rien dans « ${esc(cat)} » — plusieurs personnes peuvent en apporter.`;
+    return;
+  }
+  const dup=existing.find(i=>norm(i.plat)===platVal && platVal);
+  if(dup){ hint.className="hint dup"; hint.innerHTML=`Déjà prévu par <b>${esc(personName(dup.personId))}</b> — un autre choix évite le doublon.`; return; }
+  hint.className="hint";
+  hint.innerHTML = existing.length ? `Déjà dans cette catégorie : <b>${labels}</b>` : `Personne n'a encore prévu de « ${esc(cat)} ».`;
+}
+function refreshHints(){
+  const dl=$("#platList"); if(dl){ const uniq=[...new Set(state.items.map(i=>i.plat))]; dl.innerHTML=uniq.map(p=>`<option value="${esc(p)}"></option>`).join(""); }
+  document.querySelectorAll(".apport").forEach(updateRowHint);
+}
+
+/* ===== Édition ===== */
+function setEditUI(on, name){
+  $("#save").textContent = on ? "Mettre à jour" : "C'est noté !";
+  $("#cancelEdit").hidden = !on;
+  const eb=$("#editBanner");
+  if(on){ eb.hidden=false; eb.innerHTML=`Tu modifies l'inscription de <b>${esc(name)}</b>.`; }
+  else { eb.hidden=true; eb.innerHTML=""; }
+}
+function resetForm(){
+  $("#nom").value=""; formTetes=1; formArrivee=""; formDepart=""; counts={};
+  $("#apportsList").innerHTML=""; addApportRow(); setAdv(false); renderSimple();
+}
+function cancelEdit(){ editingId=null; resetForm(); setEditUI(false); $("#editPick").value=""; }
+function loadForEdit(id){
+  const p=state.people.find(x=>x.id===id); if(!p) return;
+  editingId=id;
+  $("#nom").value=p.nom; formTetes=p.tetes||1; formArrivee=p.arrivee||""; formDepart=p.depart||"";
+  counts={};
+  const its=state.items.filter(i=>i.personId===id), others=[];
+  for(const it of its){
+    const m=SIMPLE_ITEMS.find(s=> s.categorie===it.categorie && norm(s.plat)===norm(it.plat));
+    if(m) counts[m.key]=(counts[m.key]||0)+(it.qty>0?it.qty:1);
+    else others.push(it);
+  }
+  $("#apportsList").innerHTML="";
+  if(others.length){ for(const it of others){ const row=addApportRow(); row.querySelector(".apCat").value=it.categorie; row.querySelector(".apQty").value=it.qty||""; row.querySelector(".apPlat").value=it.plat; updateRowHint(row); } }
+  else addApportRow();
+  setAdv(others.length>0 || !!formArrivee || !!formDepart);
+  renderSimple();
+  $("#editPick").value=id;
+  setEditUI(true, p.nom);
+  showTab("participer");
+  $("#nom").scrollIntoView({behavior:"smooth", block:"center"});
+}
+
+/* ===== Enregistrement ===== */
+function readForm(){
+  const nom=$("#nom").value.trim();
+  const apports=[];
+  for(const it of SIMPLE_ITEMS){ const n=counts[it.key]||0; if(n>0) apports.push({ categorie:it.categorie, plat:it.plat, qty:n }); }
+  for(const r of document.querySelectorAll(".apport")){
+    const cat=r.querySelector(".apCat").value, qv=parseInt(r.querySelector(".apQty").value,10);
+    let plat=r.querySelector(".apPlat").value.trim(); if(!plat && qv>0) plat=shortCat(cat);
+    if(plat) apports.push({ categorie:cat, plat, qty:(qv>0?qv:null) });
+  }
+  return { nom, arrivee:formArrivee, depart:formDepart, tetes:formTetes, apports };
+}
+function saveParticipation(){
+  const { nom, arrivee, depart, tetes, apports } = readForm();
+  if(!nom){ toast("Indique d'abord ton prénom."); $("#nom").focus(); return; }
+  if(!apports.length && !arrivee){ toast("Choisis au moins une image de ce que tu apportes."); return; }
+  if(arrivee && depart && toMin(depart) < toMin(arrivee)){ toast("Le départ est avant l'arrivée."); return; }
+
+  const wasEditing = !!editingId;
+  let targetId = editingId;
+  if(!targetId){
+    const ex = state.people.find(p=>norm(p.nom)===norm(nom));
+    if(ex && confirm(`Une participation existe déjà pour « ${nom} ». La mettre à jour ?\n(Annuler = créer une autre entrée)`)) targetId = ex.id;
+  }
+
+  mutate(s => {
+    let p = targetId ? s.people.find(x=>x.id===targetId) : null;
+    if(p){ p.nom=nom; p.arrivee=arrivee; p.depart=depart; p.tetes=tetes; s.items=s.items.filter(i=>i.personId!==p.id); }
+    else { p={ id:uid(), nom, arrivee, depart, tetes }; s.people.push(p); }
+    for(const a of apports) s.items.push({ id:uid(), personId:p.id, categorie:a.categorie, plat:a.plat, qty:a.qty });
+  }).then(()=>{ cancelEdit(); toast(wasEditing||targetId ? "Participation mise à jour." : "Participation enregistrée. Merci !"); });
+}
+function removePerson(id){
+  const p=state.people.find(x=>x.id===id); if(!p) return;
+  if(!confirm(`Retirer la participation de « ${p.nom} » ?`)) return;
+  if(editingId===id) cancelEdit();
+  mutate(s=>{ s.items=s.items.filter(i=>i.personId!==id); s.people=s.people.filter(x=>x.id!==id); });
+}
+
+/* ===== Copie imagée (WhatsApp) ===== */
+function buildGraphicText(){
+  const e=state.event, hc=headcount(), L=[], DIV="━━━━━━━━━━━━";
+  L.push(`🧺 *${e.titre||"Pique-nique"}*`);
+  const l2=[e.date?`📅 ${e.date}`:"", e.lieu?`📍 ${e.lieu}`:""].filter(Boolean).join("   ");
+  if(l2) L.push(l2);
+  if(e.debut&&e.fin) L.push(`🕛 ${e.debut}–${e.fin}`);
+  if(hc.inscrits||hc.attendusSaisi){
+    let c=`👥 ${hc.confirmes} convives (${hc.inscrits} inscrit${hc.inscrits>1?"s":""})`;
+    if(hc.attendusSaisi) c += hc.confirmes<=hc.attendusSaisi ? ` · ${hc.attendusSaisi} attendus` : ` · relevé à ${hc.effective}`;
+    L.push(c);
+  }
+  if(e.note) L.push(`📝 ${e.note}`);
+
+  L.push("", DIV, "*AU MENU*");
+  let any=false;
+  for(const cat of CATEGORIES){
+    const items=platsByCat(cat); if(!items.length) continue; any=true;
+    let head=`${CAT_EMOJI[cat]||"•"} *${cat}*`;
+    if(isMaterial(cat)){ const t=sumQty(items); if(PER_PERSON_MAT.includes(cat)&&hc.effective>0) head+=` — ${t}/${hc.effective}`; else if(t) head+=` — ${t}`; }
+    L.push("", head);
+    for(const it of items){ const lbl=it.qty?`${it.qty} × ${it.plat}`:it.plat; L.push(`• ${lbl} — ${personName(it.personId)}`); }
+  }
+  if(!any) L.push("(rien pour l'instant)");
+
+  const manqF=ESS_FOOD.filter(c=>!platsByCat(c).length), miss=[];
+  for(const cat of PER_PERSON_MAT){ if(hc.effective<=0) break; const t=sumQty(platsByCat(cat)); if(t<hc.effective) miss.push(`${CAT_EMOJI[cat]||"•"} ${shortCat(cat)} : ${t>0?`manque ${hc.effective-t}`:`${hc.effective} à prévoir`}`); }
+  for(const cat of OTHER_ESS_MAT){ if(!platsByCat(cat).length) miss.push(`${CAT_EMOJI[cat]||"•"} ${cat} : personne`); }
+  if(manqF.length||miss.length){
+    L.push("", DIV, "⚠️ *À PRÉVOIR*");
+    for(const c of manqF) L.push(`${CAT_EMOJI[c]||"•"} ${c} : personne`);
+    for(const m of miss) L.push(m);
+  }
+
+  const withT=state.people.filter(p=>p.arrivee).sort((a,b)=>toMin(a.arrivee)-toMin(b.arrivee));
+  if(withT.length){
+    L.push("", DIV, "🕒 *PRÉSENCES*");
+    for(const p of withT){ const dep=p.depart||e.fin, n=p.tetes>1?` ·${p.tetes}`:""; L.push(`• ${p.nom} ${p.arrivee}–${dep}${n}`); }
+  }
+  const pend=state.people.filter(p=>!p.arrivee);
+  if(pend.length) L.push(`• Horaire à confirmer : ${pend.map(p=>p.nom).join(", ")}`);
+  return L.join("\n").trim();
+}
+async function copyShare(){
+  const text=buildGraphicText();
+  try{ await navigator.clipboard.writeText(text); toast("Copié — prêt à coller dans WhatsApp."); }
+  catch(e){ $("#copyArea").value=text; $("#copyDlg").showModal(); $("#copyArea").select(); }
+}
+
+/* ===== Export / Import / Reset ===== */
+function download(name, text, type){ const b=new Blob([text],{type}), u=URL.createObjectURL(b), a=document.createElement("a"); a.href=u; a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(u),1500); }
+function exportJSON(){ download("pique-nique.json", JSON.stringify(state,null,2), "application/json"); }
+function importJSON(file){
+  const r=new FileReader();
+  r.onload=()=>{ try{ const data=normalizeState(JSON.parse(r.result)); if(!confirm("Remplacer la liste actuelle par le fichier importé ?")) return; mutate(s=>{ s.event=data.event; s.people=data.people; s.items=data.items; }); toast("Liste importée."); }catch(e){ toast("Fichier illisible."); } };
+  r.readAsText(file);
+}
+function resetAll(){ if(!confirm("Effacer toute la liste (participants et apports) ? Cette action est définitive.")) return; cancelEdit(); mutate(s=>{ const b=blankState(); s.event=b.event; s.people=[]; s.items=[]; }); toast("Liste effacée."); }
+
+/* ===== Toast ===== */
+let toastTimer;
+function toast(msg){ const el=$("#toast"); el.textContent=msg; el.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove("show"),2600); }
+
+/* ===== Onglets ===== */
+function showTab(name){
+  document.querySelectorAll(".page").forEach(p=>p.hidden = (p.id!=="page-"+name));
+  document.querySelectorAll(".tabs button").forEach(b=>b.classList.toggle("active", b.dataset.tab===name));
+  if(location.hash!=="#"+name){ try{ history.replaceState(null,"","#"+name); }catch(e){} }
+  window.scrollTo({top:0});
+}
+
+/* ===== Liaison config ===== */
+function bindEvent(id, key, isTime){
+  const el=$("#"+id); if(!el) return;
+  el.addEventListener("change", ()=>{ const val=el.value; mutate(s=>{ s.event[key]=val; }); });
+  if(isTime) el.addEventListener("change", renderTimeChips);
+}
+
+/* ===== Démarrage ===== */
+async function init(){
+  const raw=await store.get();
+  if(raw){ try{ state=normalizeState(JSON.parse(raw)); }catch(e){} }
+
+  const dl=document.createElement("datalist"); dl.id="platList"; document.body.appendChild(dl);
+
+  bindEvent("titre","titre"); bindEvent("date","date"); bindEvent("lieu","lieu");
+  bindEvent("debut","debut",true); bindEvent("fin","fin",true);
+  bindEvent("attendus","attendus"); bindEvent("note","note");
+
+  $("#addApport").addEventListener("click", ()=>addApportRow().querySelector(".apPlat").focus());
+  $("#save").addEventListener("click", saveParticipation);
+  $("#cancelEdit").addEventListener("click", cancelEdit);
+  $("#editPick").addEventListener("change", e=>{ const v=e.target.value; if(v) loadForEdit(v); else cancelEdit(); });
+
+  $("#peoplePick").addEventListener("click", e=>{ const b=e.target.closest(".ppl"); if(!b) return; if(b.dataset.more!==undefined) formTetes=formTetes<5?5:formTetes+1; else formTetes=parseInt(b.dataset.tetes,10)||1; renderPeople(); });
+  $("#itemGrid").addEventListener("click", e=>{
+    const m=e.target.closest("[data-minus]");
+    if(m){ const k=m.getAttribute("data-minus"); counts[k]=Math.max(0,(counts[k]||0)-1); renderItemGrid(); return; }
+    const it=e.target.closest(".item"); if(!it) return;
+    const k=it.dataset.key; counts[k]=(counts[k]||0)+1; renderItemGrid();
+  });
+  $("#arriveeChips").addEventListener("click", e=>{ const c=e.target.closest(".tchip"); if(!c) return; formArrivee=c.getAttribute("data-t"); renderTimeChips(); });
+  $("#departChips").addEventListener("click", e=>{ const c=e.target.closest(".tchip"); if(!c) return; formDepart=c.getAttribute("data-t"); renderTimeChips(); });
+  $("#advToggle").addEventListener("click", ()=> setAdv($("#adv").hidden));
+
+  $("#gridFocus").addEventListener("change", e=>{ gridFocus=e.target.value; renderGrid(); });
+
+  $("#adminList").addEventListener("click", e=>{
+    const ed=e.target.closest("[data-edit]"), de=e.target.closest("[data-del]");
+    if(ed) loadForEdit(ed.getAttribute("data-edit"));
+    else if(de) removePerson(de.getAttribute("data-del"));
+  });
+
+  $("#copyShare").addEventListener("click", copyShare);
+  $("#print").addEventListener("click", ()=>window.print());
+  $("#export").addEventListener("click", exportJSON);
+  $("#importBtn").addEventListener("click", ()=>$("#importFile").click());
+  $("#importFile").addEventListener("change", e=>{ if(e.target.files[0]) importJSON(e.target.files[0]); e.target.value=""; });
+  $("#reset").addEventListener("click", resetAll);
+  $("#copyClose").addEventListener("click", ()=>$("#copyDlg").close());
+
+  document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click", ()=>showTab(b.dataset.tab)));
+  const start = (location.hash||"").replace("#","");
+  showTab(["participer","recap","pilotage"].includes(start)?start:"participer");
+
+  populatePeopleIcons();
+  addApportRow();
+  renderAll();
+
+  // Polling : actif si Claude ou PHP (rechargement périodique pour voir les ajouts des autres)
+  setInterval(async ()=>{
+    if(!hasShared && phpOk !== true) return;
+    const r=await store.get();
+    if(r && r!==JSON.stringify(state)){ try{ state=normalizeState(JSON.parse(r)); renderAll(); }catch(e){} }
+  }, 6000);
+}
+document.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>
