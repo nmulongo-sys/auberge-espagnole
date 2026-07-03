@@ -210,6 +210,8 @@
     .who,.cat-title{color:#000}
   }
 </style>
+<script>/* Chargeur de thème du portail Formation Musicale : ?theme= -> localStorage['fm-theme'] */
+(function(){try{var q=new URLSearchParams(location.search),t=q.get('theme');if(t){localStorage.setItem('fm-theme',t);}else{t=localStorage.getItem('fm-theme');}if(t==='clair'||t==='sombre'){document.documentElement.setAttribute('data-fm-theme',t);}}catch(e){}})();</script>
 </head>
 <body>
 <div class="wrap">
