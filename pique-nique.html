@@ -387,36 +387,51 @@
 <script>
 "use strict";
 
-/* ===== Stockage : 1. Claude partagé  2. PHP (InfinityFree / NAS)  3. localStorage  4. mémoire ===== */
-const STORE_KEY = "pique-nique:data", SHARED = true, _mem = {};
-const hasShared = !!(window.storage && window.storage.get && window.storage.set);
-const PHP_API = './api.php';  // chemin relatif à la page HTML
-let phpOk = null;             // null = non testé | true = dispo | false = absent/erreur
+/* ===== Stockage : Supabase (partagé) avec repli localStorage (lecture hors ligne) =====
+   Table pn_state : une ligne unique (id=1) { data jsonb, version bigint }.
+   Verrouillage optimiste : l'écriture cible version=eq.N et incrémente ;
+   si une autre personne a écrit entre-temps, la réponse est vide et mutate() rejoue. */
+const STORE_KEY = "pique-nique:data";
+const SB_URL = "https://hifqtzxhmboxbruraiab.supabase.co";
+const SB_KEY = "sb_publishable_HdA4ThMx_yDk7212nJ_sIg_J18wCNYK";
+const SB_HEADERS = { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY, "Content-Type": "application/json" };
+const SB_ROW = SB_URL + "/rest/v1/pn_state?id=eq.1";
+let sbOk = null;          // null = non testé | true = joignable | false = hors ligne / erreur
+let sbVersion = null;     // version de la dernière lecture réussie
 
-async function phpGet(){
-  const r = await fetch(PHP_API, {cache:'no-store'});
+async function sbGet(){
+  const r = await fetch(SB_ROW + "&select=data,version", { headers: SB_HEADERS, cache: "no-store" });
   if(!r.ok) throw new Error(r.status);
-  const t = await r.text(); phpOk = true;
-  return (t === 'null' || t === '' || t === 'false') ? null : t;
+  const rows = await r.json();
+  sbOk = true;
+  if(!rows.length) return null;
+  sbVersion = rows[0].version;
+  return JSON.stringify(rows[0].data);
 }
-async function phpSet(v){
-  const r = await fetch(PHP_API, {method:'POST', headers:{'Content-Type':'application/json'}, body:v});
+/* Écriture conditionnelle : ne réussit que si personne n'a écrit depuis notre lecture. */
+async function sbSet(v, expectedVersion){
+  const r = await fetch(SB_ROW + "&version=eq." + expectedVersion, {
+    method: "PATCH",
+    headers: { ...SB_HEADERS, "Prefer": "return=representation" },
+    body: JSON.stringify({ data: JSON.parse(v), version: expectedVersion + 1 })
+  });
   if(!r.ok) throw new Error(r.status);
-  phpOk = true;
+  const rows = await r.json();
+  sbOk = true;
+  if(!rows.length) return false;      // conflit : quelqu'un a écrit entre-temps
+  sbVersion = rows[0].version;
+  return true;
 }
 
 const store = {
   async get(){
-    if(hasShared){ try{ const r = await window.storage.get(STORE_KEY, SHARED); return r ? r.value : null; }catch(e){ return null; } }
-    if(phpOk !== false){ try{ return await phpGet(); }catch(e){ phpOk = false; } }
+    try{
+      const v = await sbGet();
+      if(v !== null){ try{ localStorage.setItem(STORE_KEY, v); }catch(e){} }
+      return v;
+    }catch(e){ sbOk = false; }
     try{ return localStorage.getItem(STORE_KEY); }catch(e){}
-    return _mem[STORE_KEY] ?? null;
-  },
-  async set(v){
-    if(hasShared){ try{ await window.storage.set(STORE_KEY, v, SHARED); return; }catch(e){} }
-    if(phpOk !== false){ try{ await phpSet(v); return; }catch(e){ phpOk = false; } }
-    try{ localStorage.setItem(STORE_KEY, v); return; }catch(e){}
-    _mem[STORE_KEY] = v;
+    return null;
   }
 };
 
@@ -496,17 +511,41 @@ function normalizeState(s){
   return out;
 }
 
-/* mutation atomique : relit l'état frais avant d'écrire */
+/* mutation atomique : relit l'état frais, applique, écrit conditionnellement (version).
+   En cas de conflit (quelqu'un a écrit entre-temps), rejoue la mutation sur l'état frais. */
 let saving = Promise.resolve();
 function mutate(fn){
   saving = saving.then(async () => {
-    const raw = await store.get();
-    let fresh = blankState();
-    if(raw){ try{ fresh = normalizeState(JSON.parse(raw)); }catch(e){} }
-    fn(fresh);
-    state = fresh;
-    await store.set(JSON.stringify(fresh));
+    for(let tentative = 0; tentative < 6; tentative++){
+      let fresh = blankState(), version = null;
+      try{
+        const raw = await sbGet();          // met à jour sbVersion
+        version = sbVersion;
+        if(raw){ try{ fresh = normalizeState(JSON.parse(raw)); }catch(e){} }
+      }catch(e){ sbOk = false; }
+
+      fn(fresh);
+      state = fresh;
+      const payload = JSON.stringify(fresh);
+
+      if(sbOk && version !== null){
+        try{
+          if(await sbSet(payload, version)){
+            try{ localStorage.setItem(STORE_KEY, payload); }catch(e){}
+            renderAll();
+            return;
+          }
+          continue;                          // conflit → rejeu sur état frais
+        }catch(e){ sbOk = false; }
+      }
+      /* Hors ligne : sauvegarde locale seulement, avec avertissement */
+      try{ localStorage.setItem(STORE_KEY, payload); }catch(e){}
+      renderAll();
+      toast("⚠️ Hors ligne : enregistré sur cet appareil seulement.");
+      return;
+    }
     renderAll();
+    toast("⚠️ Trop de conflits d'écriture simultanés, réessaie.");
   });
   return saving;
 }
@@ -731,15 +770,13 @@ function renderEditSelector(){
 function renderFoot(){
   const el=$("#foot"); if(!el) return;
   let txt, cls="";
-  if(hasShared){
-    txt = "🟢 Mode Claude — liste partagée en direct.";
-  } else if(phpOk === true){
-    txt = "🟢 Mode serveur (api.php) — liste partagée en direct pour tous les participants.";
-  } else if(phpOk === false){
-    txt = "🟡 api.php non disponible — données locales uniquement (ce navigateur). Vérifier que api.php et data.json sont bien uploadés avec les bons droits.";
+  if(sbOk === true){
+    txt = "🟢 Liste partagée en direct (Supabase) — visible par tous les participants.";
+  } else if(sbOk === false){
+    txt = "🟡 Hors ligne — données locales uniquement (ce navigateur). La liste se resynchronisera au retour de la connexion.";
     cls = "color:var(--tomato)";
   } else {
-    txt = "Détection du mode de stockage…";
+    txt = "Connexion à la liste partagée…";
   }
   el.innerHTML = `<span style="${cls}">${txt}</span>`;
 }
@@ -995,11 +1032,13 @@ async function init(){
   addApportRow();
   renderAll();
 
-  // Polling : actif si Claude ou PHP (rechargement périodique pour voir les ajouts des autres)
+  // Polling : rechargement périodique depuis Supabase pour voir les ajouts des autres
   setInterval(async ()=>{
-    if(!hasShared && phpOk !== true) return;
+    if(document.hidden) return;   // onglet en arrière-plan : on ne sollicite pas le réseau
+    const avant = sbOk;
     const r=await store.get();
     if(r && r!==JSON.stringify(state)){ try{ state=normalizeState(JSON.parse(r)); renderAll(); }catch(e){} }
+    else if(sbOk !== avant){ renderFoot(); }   // reconnexion/déconnexion sans changement de données
   }, 6000);
 }
 document.addEventListener("DOMContentLoaded", init);
