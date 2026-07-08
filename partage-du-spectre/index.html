@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Partage du spectre</title>
+<style>
+  :root{
+    --bg:#14161d; --panel:#1e2230; --panel2:#262b3d; --line:#343b52;
+    --text:#e8eaf2; --muted:#9aa2bd; --accent:#5ac8fa; --ok:#4cd964; --bad:#ff5f6d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text)}
+  h1,h2,h3{font-weight:600;margin:0 0 .5em}
+  button{font:inherit;background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:.45em .9em;cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#08222e;font-weight:600}
+  button.danger{border-color:var(--bad);color:var(--bad)}
+  input,select{font:inherit;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:.4em .6em}
+  input[type=range]{padding:0}
+  label{font-size:.85em;color:var(--muted);display:block;margin-bottom:.15em}
+  .screen{display:none;max-width:1200px;margin:0 auto;padding:24px}
+  .screen.active{display:block}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:16px}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+  .muted{color:var(--muted)}
+  code{background:var(--panel2);padding:.1em .4em;border-radius:5px}
+
+  /* --- écran salle --- */
+  #roomHeader{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+  #roomCodeBadge{font-size:1.3em;font-weight:700;letter-spacing:.15em;background:var(--panel2);border:1px dashed var(--accent);border-radius:10px;padding:.25em .7em}
+  .phase-pill{padding:.25em .8em;border-radius:999px;font-size:.85em;border:1px solid var(--line)}
+  .phase-compose{background:#2b3a2e;color:var(--ok);border-color:var(--ok)}
+  .phase-play{background:#3a2b2e;color:#ffb86c;border-color:#ffb86c}
+
+  #layout{display:grid;grid-template-columns:290px 1fr;gap:16px}
+  @media(max-width:900px){#layout{grid-template-columns:1fr}}
+
+  /* --- palette --- */
+  .chip{display:flex;align-items:center;gap:8px;width:100%;text-align:left;margin-bottom:6px;padding:.4em .6em}
+  .chip .sw{width:14px;height:14px;border-radius:4px;flex:none}
+  .chip.selected{outline:2px solid var(--accent)}
+  .chip small{color:var(--muted);margin-left:auto;white-space:nowrap}
+  .chip .del{margin-left:4px;color:var(--muted);border:none;background:none;padding:0 .3em}
+  .chip .del:hover{color:var(--bad)}
+
+  /* --- grille --- */
+  #gridScroller{overflow-x:auto;padding-bottom:6px}
+  #gridInner{display:flex;min-width:min-content}
+  #bandLabels{display:grid;grid-template-rows:26px repeat(8,38px);flex:none;margin-right:6px}
+  #bandLabels div{font-size:.68em;color:var(--muted);display:flex;align-items:center;justify-content:flex-end;padding-right:6px;white-space:nowrap}
+  #gridCol{flex:1;min-width:0}
+  #beatHeads{display:grid;height:26px}
+  #beatHeads .bh{border-left:2px solid var(--line);font-size:.75em;color:var(--muted);display:flex;align-items:center;padding-left:6px}
+  #cells{display:grid;position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  .cell{border-left:1px solid #232838;border-top:1px solid #232838;min-width:16px}
+  .cell.beatstart{border-left:2px solid var(--line)}
+  .cell.ontime{background:rgba(255,255,255,.028)}
+  .cell:hover{background:rgba(90,200,250,.12)}
+  .brick{border-radius:6px;margin:2px;padding:1px 4px;font-size:.66em;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#08131a;display:flex;align-items:center;z-index:2;cursor:default;border:1px solid rgba(0,0,0,.25)}
+  .brick.mine{cursor:pointer}
+  .brick.mine:hover{filter:brightness(1.15)}
+  .brick.hit{outline:2px solid #fff;filter:brightness(1.35)}
+  #ghost{position:absolute;pointer-events:none;border-radius:6px;z-index:3;display:none;border:2px solid var(--ok);background:rgba(76,217,100,.18)}
+  #ghost.conflict{border-color:var(--bad);background:rgba(255,95,109,.18)}
+  #playhead{position:absolute;top:0;bottom:0;width:2px;background:#ffb86c;z-index:4;display:none}
+
+  #posLegend{font-size:.72em;color:var(--muted);margin-top:6px}
+
+  /* --- joueurs --- */
+  .playerTag{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border-radius:999px;padding:.2em .7em;margin:0 6px 6px 0;font-size:.85em}
+  .playerTag .sw{width:10px;height:10px;border-radius:50%}
+
+  /* --- modal --- */
+  #modalBack{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:20;align-items:center;justify-content:center;padding:20px}
+  #modalBack.open{display:flex}
+  #modal{background:var(--panel);border:1px solid var(--line);border-radius:14px;max-width:900px;width:100%;max-height:90vh;overflow:auto;padding:20px}
+  pre#patternText{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;overflow-x:auto;font-size:.8em;line-height:1.5}
+
+  #toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--bad);color:var(--text);padding:.6em 1.2em;border-radius:10px;z-index:30;display:none;max-width:90vw}
+  #toast.ok{border-color:var(--ok)}
+</style>
+</head>
+<body>
+
+<!-- ================= écran configuration manquante ================= -->
+<div id="screen-config" class="screen">
+  <div class="card">
+    <h1>Partage du spectre — configuration requise</h1>
+    <p>Ce fichier n'est pas encore relié à un projet Supabase. Ouvrez le source et renseignez,
+       en tête de script, les deux constantes&nbsp;:</p>
+    <p><code>SUPABASE_URL</code> — l'URL du projet (Supabase &rarr; Settings &rarr; API)<br>
+       <code>SUPABASE_ANON_KEY</code> — la clé <code>anon</code> publique du même écran.</p>
+    <p class="muted">Le schéma attendu (tables <code>poly_rooms</code>, <code>poly_players</code>,
+       <code>poly_bricks</code>, contrainte d'exclusion gist, RLS permissive, Realtime) est décrit
+       dans le README du projet.</p>
+  </div>
+</div>
+
+<!-- ================= écran accueil ================= -->
+<div id="screen-home" class="screen">
+  <h1>Partage du spectre</h1>
+  <p class="muted">Composition collaborative de patterns rythmiques&nbsp;: chaque brique occupe une zone du
+     spectre à un instant donné — et deux briques ne peuvent pas occuper la même zone au même instant.</p>
+
+  <div class="card">
+    <h2>Rejoindre une salle</h2>
+    <div class="row">
+      <div><label>Code de salle</label><input id="joinCode" maxlength="8" style="width:8em;text-transform:uppercase" placeholder="p.ex. KZM4T"></div>
+      <div><label>Votre nom</label><input id="joinName" maxlength="24" placeholder="prénom"></div>
+      <div><label>Instrument</label><select id="joinInstr"></select></div>
+      <button class="primary" id="btnJoin">Rejoindre</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Créer une salle</h2>
+    <div class="row">
+      <div><label>Temps par cycle (2–16)</label><input id="newBeats" type="number" min="2" max="16" value="4" style="width:5em"></div>
+      <div><label>Tempo (BPM)</label><input id="newTempo" type="number" min="30" max="300" value="100" style="width:5em"></div>
+      <div><label>Votre nom</label><input id="newName" maxlength="24" placeholder="prénom"></div>
+      <div><label>Instrument</label><select id="newInstr"></select></div>
+      <button class="primary" id="btnCreate">Créer</button>
+    </div>
+    <p class="muted" style="margin-top:10px">Chaque temps porte 4 positions (juste avant / temps / juste après / contre-temps),
+       soit temps &times; 4 colonnes. Le spectre est découpé en 8 bandes, du grave profond au claqué.</p>
+  </div>
+</div>
+
+<!-- ================= écran salle ================= -->
+<div id="screen-room" class="screen">
+  <div id="roomHeader">
+    <span id="roomCodeBadge"></span>
+    <span id="phasePill" class="phase-pill"></span>
+    <span class="muted" id="roomMeta"></span>
+    <span style="flex:1"></span>
+    <button id="btnPhase"></button>
+    <button id="btnPlay" class="primary">▶ Lire</button>
+    <button id="btnStop" style="display:none">■ Stop</button>
+    <button id="btnMyPattern">Mon pattern</button>
+    <button id="btnLeave" class="danger">Quitter</button>
+  </div>
+
+  <div class="card" style="padding:12px 16px">
+    <div class="row" style="align-items:center">
+      <div style="flex:1"><span class="muted" style="font-size:.85em">Participants&nbsp;: </span><span id="playerList"></span></div>
+      <div style="min-width:220px"><label>Tempo&nbsp;: <span id="tempoVal"></span> BPM</label>
+        <input id="tempoSlider" type="range" min="40" max="240" step="1" style="width:100%"></div>
+    </div>
+  </div>
+
+  <div id="layout">
+    <!-- ---- palette ---- -->
+    <div>
+      <div class="card">
+        <h3>Mes briques</h3>
+        <p class="muted" style="font-size:.8em">Sélectionnez une brique puis cliquez une colonne de la grille pour la placer.
+           Cliquez une de vos briques placées pour la retirer.</p>
+        <div id="paletteList"></div>
+        <button id="btnSuggest" style="margin-top:8px;width:100%">+ Ajouter les frappes types de mon instrument</button>
+      </div>
+
+      <div class="card">
+        <h3>Créer une brique</h3>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div><label>À partir de</label><select id="edBase" style="width:100%"></select></div>
+          <div><label>Nom de la brique</label><input id="edLabel" maxlength="20" style="width:100%"></div>
+          <div class="row">
+            <div style="flex:1"><label>Décalage de hauteur&nbsp;: <span id="edShiftVal">0</span> ½ ton</label>
+              <input id="edShift" type="range" min="-12" max="12" step="1" value="0" style="width:100%"></div>
+          </div>
+          <div class="row">
+            <div><label>Bande basse</label><select id="edBand"></select></div>
+            <div><label>Épaisseur</label><select id="edThick"><option>1</option><option>2</option><option>3</option></select></div>
+          </div>
+          <div class="row">
+            <button id="btnPreview">🔊 Écouter</button>
+            <button id="btnAddBrick" class="primary">Ajouter à ma palette</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ---- grille ---- -->
+    <div class="card">
+      <h3 style="margin-bottom:12px">Grille commune <span class="muted" style="font-weight:400;font-size:.75em">— temps &rarr; horizontal, spectre &rarr; vertical (aigu en haut)</span></h3>
+      <div id="gridScroller">
+        <div id="gridInner">
+          <div id="bandLabels"></div>
+          <div id="gridCol">
+            <div id="beatHeads"></div>
+            <div id="cells">
+              <div id="ghost"></div>
+              <div id="playhead"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="posLegend">Positions dans chaque temps&nbsp;: <b>◀</b> juste avant · <b>●</b> temps · <b>▶</b> juste après · <b>◦</b> contre-temps</div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= modal pattern individuel ================= -->
+<div id="modalBack">
+  <div id="modal">
+    <div style="display:flex;align-items:center;gap:12px">
+      <h2 style="flex:1;margin:0">Pattern de <span id="patternWho"></span></h2>
+      <button id="btnSoloPlay">▶ Écouter seul</button>
+      <button id="btnCopyPattern">Copier le texte</button>
+      <button id="btnCloseModal">Fermer</button>
+    </div>
+    <pre id="patternText"></pre>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+'use strict';
+/* =====================================================================
+   Partage du spectre — outil pédagogique collaboratif de composition
+   de patterns rythmiques. Fichier unique + Supabase (Realtime).
+   ===================================================================== */
+
+// ---- configuration : renseignez votre projet Supabase ici ----
+const SUPABASE_URL      = '<VOTRE_URL>';
+const SUPABASE_ANON_KEY = '<VOTRE_CLE_ANON>';
+
+const BANDS = 8;
+const POS_PER_BEAT = 4;                          // ◀ avant / ● temps / ▶ après / ◦ contre-temps
+const POS_OFFSETS  = [-0.10, 0, 0.10, 0.5];      // en fraction de temps
+const POS_SYMBOLS  = ['◀','●','▶','◦'];
+const BAND_NAMES = ['Grave profond','Grave','Bas-médium','Médium','Haut-médium','Aigu','Très aigu','Claqué / brillance'];
+const PLAYER_COLORS = ['#e5793a','#5ac8fa','#4cd964','#ffd23f','#c792ea','#ff8fa3','#7de2d1','#f4a261'];
+
+/* =========================== instruments ===========================
+   Timbres paramétriques Web Audio (pas d'échantillon), repris du
+   moteur du métronome : drum (membrane), snap (claqué), bell (métal),
+   scrape (frotté). Le décalage de hauteur multiplie les fréquences.  */
+const INSTRUMENTS = {
+  'Djembé': [
+    {label:'Basse', band:0, thickness:2, sound:{type:'drum', freq:80,  drop:2.0, decay:0.50, gain:1.0}},
+    {label:'Tone',  band:2, thickness:2, sound:{type:'drum', freq:185, drop:1.6, decay:0.26, gain:0.85}},
+    {label:'Slap',  band:5, thickness:3, sound:{type:'snap', freq:2300, q:1.0, decay:0.15, gain:0.9, body:330}},
+  ],
+  'Dununba': [
+    {label:'Dununba étouffé', band:0, thickness:1, sound:{type:'drum', freq:55, drop:1.5, decay:0.16, gain:1.0}},
+    {label:'Dununba ouvert',  band:0, thickness:2, sound:{type:'drum', freq:55, drop:1.8, decay:0.65, gain:1.0}},
+  ],
+  'Sangban': [
+    {label:'Sangban étouffé', band:1, thickness:1, sound:{type:'drum', freq:90, drop:1.5, decay:0.15, gain:0.95}},
+    {label:'Sangban ouvert',  band:1, thickness:2, sound:{type:'drum', freq:90, drop:1.7, decay:0.5,  gain:0.95}},
+  ],
+  'Kenkeni': [
+    {label:'Kenkeni étouffé', band:2, thickness:1, sound:{type:'drum', freq:145, drop:1.5, decay:0.13, gain:0.9}},
+    {label:'Kenkeni ouvert',  band:3, thickness:1, sound:{type:'drum', freq:145, drop:1.6, decay:0.4,  gain:0.9}},
+  ],
+  'Cloche': [
+    {label:'Cloche', band:6, thickness:2, sound:{type:'bell', freq:840, decay:0.35, gain:0.55}},
+  ],
+  'Agogô': [
+    {label:'Agogô grave', band:6, thickness:1, sound:{type:'bell', freq:1050, decay:0.3, gain:0.5}},
+    {label:'Agogô aigu',  band:7, thickness:1, sound:{type:'bell', freq:1420, decay:0.3, gain:0.5}},
+  ],
+  'Surdo': [
+    {label:'Surdo ouvert',  band:0, thickness:2, sound:{type:'drum', freq:48, drop:1.9, decay:0.8,  gain:1.1}},
+    {label:'Surdo étouffé', band:0, thickness:1, sound:{type:'drum', freq:48, drop:1.4, decay:0.14, gain:1.0}},
+  ],
+  'Reco-reco': [
+    {label:'Reco-reco', band:4, thickness:2, sound:{type:'scrape', freq:2100, decay:0.18, gain:0.55}},
+  ],
+};
+
+/* =========================== moteur audio =========================== */
+let AC = null, noiseBuf = null;
+function audioCtx(){
+  if (!AC){
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    noiseBuf = AC.createBuffer(1, AC.sampleRate, AC.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  if (AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function envGain(t, g, decay){
+  const ctx = audioCtx(), gn = ctx.createGain();
+  gn.gain.setValueAtTime(g, t);
+  gn.gain.exponentialRampToValueAtTime(0.001, t + decay);
+  gn.connect(ctx.destination);
+  return gn;
+}
+function noiseSrc(t, dur){
+  const ctx = audioCtx(), src = ctx.createBufferSource();
+  src.buffer = noiseBuf; src.loop = true;
+  src.start(t); src.stop(t + dur + 0.05);
+  return src;
+}
+function percDrum(t, {freq, drop = 1.8, decay = 0.4, gain = 1}){
+  const ctx = audioCtx(), osc = ctx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(freq * drop, t);
+  osc.frequency.exponentialRampToValueAtTime(freq, t + 0.03);
+  osc.connect(envGain(t, gain, decay));
+  osc.start(t); osc.stop(t + decay + 0.05);
+  // transitoire d'attaque
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.frequency.value = Math.min(freq * 9, 4000); bp.Q.value = 0.8;
+  noiseSrc(t, 0.03).connect(bp).connect(envGain(t, gain * 0.25, 0.03));
+}
+function percSnap(t, {freq, q = 1, decay = 0.15, gain = 1, body = 0}){
+  const ctx = audioCtx(), bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.frequency.value = freq; bp.Q.value = q;
+  noiseSrc(t, decay).connect(bp).connect(envGain(t, gain, decay));
+  if (body) percDrum(t, {freq: body, drop: 1.4, decay: Math.min(decay, 0.1), gain: gain * 0.35});
+}
+function percBell(t, {freq, decay = 0.35, gain = 0.5}){
+  const ctx = audioCtx(), out = envGain(t, gain, decay);
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.frequency.value = freq * 1.6; bp.Q.value = 1.4;
+  bp.connect(out);
+  for (const ratio of [1, 1.483, 2.21]){
+    const o = ctx.createOscillator();
+    o.type = 'square'; o.frequency.value = freq * ratio;
+    const g = ctx.createGain(); g.gain.value = ratio === 1 ? 1 : 0.4;
+    o.connect(g).connect(bp);
+    o.start(t); o.stop(t + decay + 0.05);
+  }
+}
+function percScrape(t, {freq, decay = 0.18, gain = 0.5}){
+  const ctx = audioCtx(), bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.frequency.value = freq; bp.Q.value = 2.5;
+  const gn = ctx.createGain();
+  gn.gain.setValueAtTime(0.001, t);
+  for (let i = 0; i < 3; i++){           // trois « dents » de frottement
+    gn.gain.exponentialRampToValueAtTime(gain, t + decay * (i / 3 + 0.08));
+    gn.gain.exponentialRampToValueAtTime(gain * 0.15, t + decay * ((i + 0.7) / 3));
+  }
+  gn.gain.exponentialRampToValueAtTime(0.001, t + decay);
+  gn.connect(ctx.destination);
+  noiseSrc(t, decay).connect(bp).connect(gn);
+}
+function playSound(sound, t){
+  const m = sound.mult || 1;
+  const s = {...sound, freq: sound.freq * m};
+  if (s.body) s.body = s.body * m;
+  ({drum: percDrum, snap: percSnap, bell: percBell, scrape: percScrape}[s.type] || percDrum)(t, s);
+}
+
+/* =========================== état global =========================== */
+let sb = null;
+let room = null;                 // ligne poly_rooms
+let me = null;                   // ligne poly_players
+let players = new Map();         // id -> joueur
+let bricks = new Map();          // id -> brique placée
+let palette = [];                // définitions de briques du joueur
+let selectedDef = null;
+let channel = null;
+
+const $ = id => document.getElementById(id);
+const cols = () => room ? room.beats * POS_PER_BEAT : 0;
+
+function toast(msg, ok = false){
+  const el = $('toast');
+  el.textContent = msg; el.className = ok ? 'ok' : '';
+  el.style.display = 'block';
+  clearTimeout(el._t); el._t = setTimeout(() => el.style.display = 'none', 3500);
+}
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $('screen-' + name).classList.add('active');
+}
+
+/* =========================== accueil =========================== */
+function fillInstrumentSelects(){
+  for (const sel of [$('joinInstr'), $('newInstr')]){
+    sel.innerHTML = Object.keys(INSTRUMENTS).map(n => `<option>${n}</option>`).join('');
+  }
+  const saved = localStorage.getItem('ps_name') || '';
+  $('joinName').value = saved; $('newName').value = saved;
+}
+function randomCode(){
+  const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  return Array.from({length: 5}, () => A[Math.floor(Math.random() * A.length)]).join('');
+}
+async function createRoom(){
+  const name = $('newName').value.trim();
+  if (!name) return toast('Indiquez votre nom.');
+  const beats = Math.min(16, Math.max(2, +$('newBeats').value || 4));
+  const tempo = Math.min(300, Math.max(30, +$('newTempo').value || 100));
+  const code = randomCode();
+  const {error} = await sb.from('poly_rooms').insert({code, beats, tempo});
+  if (error) return toast('Création impossible : ' + error.message);
+  await enterRoom(code, name, $('newInstr').value);
+}
+async function joinRoom(){
+  const code = $('joinCode').value.trim().toUpperCase();
+  const name = $('joinName').value.trim();
+  if (!code || !name) return toast('Indiquez le code de salle et votre nom.');
+  await enterRoom(code, name, $('joinInstr').value);
+}
+
+/* =========================== entrée en salle =========================== */
+async function enterRoom(code, name, instrument){
+  const {data: r, error} = await sb.from('poly_rooms').select('*').eq('code', code).maybeSingle();
+  if (error) return toast('Erreur : ' + error.message);
+  if (!r) return toast(`La salle ${code} n'existe pas.`);
+  room = r;
+  localStorage.setItem('ps_name', name);
+
+  // reprendre l'identité locale si on revient dans la même salle
+  const savedId = localStorage.getItem('ps_player_' + code);
+  if (savedId){
+    const {data: p} = await sb.from('poly_players').select('*').eq('id', savedId).maybeSingle();
+    if (p) me = p;
+  }
+  if (!me){
+    const used = new Set();
+    const {data: others} = await sb.from('poly_players').select('color').eq('room_code', code);
+    (others || []).forEach(p => used.add(p.color));
+    const color = PLAYER_COLORS.find(c => !used.has(c)) || PLAYER_COLORS[(others || []).length % PLAYER_COLORS.length];
+    const {data: p, error: e2} = await sb.from('poly_players')
+      .insert({room_code: code, name, instrument, color, palette: []}).select().single();
+    if (e2) return toast('Impossible de rejoindre : ' + e2.message);
+    me = p;
+    localStorage.setItem('ps_player_' + code, p.id);
+  }
+  palette = Array.isArray(me.palette) ? me.palette : [];
+
+  subscribeRealtime();
+  await refreshAll();
+  showScreen('room');
+  renderRoomHeader(); renderPlayers(); renderPalette(); buildGrid(); renderBricks(); fillEditor();
+}
+function subscribeRealtime(){
+  if (channel) sb.removeChannel(channel);
+  const f = `room_code=eq.${room.code}`;
+  channel = sb.channel('room:' + room.code)
+    .on('postgres_changes', {event: '*', schema: 'public', table: 'poly_bricks', filter: f}, payload => {
+      if (payload.eventType === 'DELETE') bricks.delete(payload.old.id);
+      else bricks.set(payload.new.id, payload.new);
+      renderBricks(); rebuildEvents();
+    })
+    .on('postgres_changes', {event: '*', schema: 'public', table: 'poly_players', filter: f}, payload => {
+      if (payload.eventType === 'DELETE') players.delete(payload.old.id);
+      else players.set(payload.new.id, payload.new);
+      renderPlayers(); renderBricks();
+    })
+    .on('postgres_changes', {event: '*', schema: 'public', table: 'poly_rooms', filter: `code=eq.${room.code}`}, payload => {
+      if (payload.eventType === 'UPDATE'){
+        const tempoChanged = payload.new.tempo !== room.tempo;
+        room = payload.new;
+        renderRoomHeader();
+        if (tempoChanged && playing) restartPlayback();
+      }
+    })
+    .subscribe();
+}
+async function refreshAll(){
+  const [{data: ps}, {data: bs}] = await Promise.all([
+    sb.from('poly_players').select('*').eq('room_code', room.code),
+    sb.from('poly_bricks').select('*').eq('room_code', room.code),
+  ]);
+  players = new Map((ps || []).map(p => [p.id, p]));
+  bricks = new Map((bs || []).map(b => [b.id, b]));
+  if (players.has(me.id)) me = players.get(me.id);
+}
+function leaveRoom(){
+  stopPlayback();
+  if (channel){ sb.removeChannel(channel); channel = null; }
+  room = null; me = null; players.clear(); bricks.clear(); palette = []; selectedDef = null;
+  showScreen('home');
+}
+
+/* =========================== rendu salle =========================== */
+function renderRoomHeader(){
+  $('roomCodeBadge').textContent = room.code;
+  $('roomMeta').textContent = `${room.beats} temps × 4 positions = ${cols()} colonnes · 8 bandes`;
+  const compose = room.phase === 'compose';
+  $('phasePill').textContent = compose ? 'Phase : composition' : 'Phase : jeu';
+  $('phasePill').className = 'phase-pill ' + (compose ? 'phase-compose' : 'phase-play');
+  $('btnPhase').textContent = compose ? 'Passer en phase de jeu' : 'Revenir en composition';
+  $('tempoVal').textContent = room.tempo;
+  $('tempoSlider').value = room.tempo;
+}
+function renderPlayers(){
+  $('playerList').innerHTML = [...players.values()].map(p =>
+    `<span class="playerTag"><span class="sw" style="background:${p.color}"></span>${esc(p.name)}
+     <span class="muted">· ${esc(p.instrument || '')}</span></span>`).join('');
+}
+function esc(s){ return String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* =========================== palette =========================== */
+function renderPalette(){
+  const el = $('paletteList');
+  el.innerHTML = '';
+  if (!palette.length){
+    el.innerHTML = '<p class="muted" style="font-size:.8em">Aucune brique — ajoutez les frappes types de votre instrument, ou créez-en une ci-dessous.</p>';
+  }
+  palette.forEach((def, i) => {
+    const b = document.createElement('button');
+    b.className = 'chip' + (selectedDef === def ? ' selected' : '');
+    b.innerHTML = `<span class="sw" style="background:${me.color}"></span>${esc(def.label)}
+      <small>b${def.band}${def.thickness > 1 ? '–' + (def.band + def.thickness - 1) : ''}</small>`;
+    b.onclick = () => { selectedDef = def; renderPalette(); };
+    const del = document.createElement('button');
+    del.className = 'del'; del.textContent = '✕'; del.title = 'Supprimer de la palette';
+    del.onclick = e => { e.stopPropagation(); palette.splice(i, 1); if (selectedDef === def) selectedDef = null; savePalette(); renderPalette(); fillEditor(); };
+    b.appendChild(del);
+    el.appendChild(b);
+  });
+}
+async function savePalette(){
+  const {error} = await sb.from('poly_players').update({palette}).eq('id', me.id);
+  if (error) toast('Sauvegarde de la palette impossible : ' + error.message);
+}
+function addSuggested(){
+  const strikes = INSTRUMENTS[me.instrument] || [];
+  for (const s of strikes){
+    if (!palette.some(d => d.label === s.label)) palette.push(JSON.parse(JSON.stringify(s)));
+  }
+  savePalette(); renderPalette(); fillEditor();
+}
+
+/* --------- éditeur de brique --------- */
+function fillEditor(){
+  const base = $('edBase');
+  const groups = [];
+  for (const [instr, strikes] of Object.entries(INSTRUMENTS)){
+    groups.push(`<optgroup label="${instr}">` +
+      strikes.map((s, i) => `<option value="i:${instr}:${i}">${s.label}</option>`).join('') + '</optgroup>');
+  }
+  if (palette.length){
+    groups.unshift('<optgroup label="Mes briques (variante par décalage)">' +
+      palette.map((d, i) => `<option value="p:${i}">${esc(d.label)}</option>`).join('') + '</optgroup>');
+  }
+  base.innerHTML = groups.join('');
+  $('edBand').innerHTML = BAND_NAMES.map((n, i) => `<option value="${i}">${i} — ${n}</option>`).join('');
+  onBaseChange();
+}
+function baseDef(){
+  const v = $('edBase').value;
+  if (!v) return null;
+  if (v.startsWith('p:')) return palette[+v.slice(2)];
+  const [, instr, i] = v.split(':');
+  return INSTRUMENTS[instr]?.[+i];
+}
+function onBaseChange(){
+  const d = baseDef();
+  if (!d) return;
+  $('edLabel').value = d.label;
+  $('edBand').value = d.band;
+  $('edThick').value = d.thickness;
+  $('edShift').value = 0; $('edShiftVal').textContent = '0';
+}
+function editorDef(){
+  const d = baseDef();
+  if (!d) return null;
+  const shift = +$('edShift').value;
+  const band = +$('edBand').value;
+  const thickness = +$('edThick').value;
+  if (band + thickness > BANDS){ toast(`Bande ${band} + épaisseur ${thickness} dépasse le haut du spectre.`); return null; }
+  const label = $('edLabel').value.trim() || d.label + (shift ? (shift > 0 ? ' +' : ' ') + shift : '');
+  const sound = {...d.sound, mult: (d.sound.mult || 1) * Math.pow(2, shift / 12)};
+  return {label, band, thickness, sound};
+}
+function previewBrick(){
+  const d = editorDef();
+  if (d) playSound(d.sound, audioCtx().currentTime + 0.02);
+}
+function addBrick(){
+  const d = editorDef();
+  if (!d) return;
+  palette.push(d); selectedDef = d;
+  savePalette(); renderPalette();
+  toast(`Brique « ${d.label} » ajoutée.`, true);
+}
+
+/* =========================== grille =========================== */
+function buildGrid(){
+  const n = cols();
+  const labels = $('bandLabels');
+  labels.innerHTML = '<div></div>' + [...Array(BANDS)].map((_, i) => {
+    const b = BANDS - 1 - i;
+    return `<div>${b} · ${BAND_NAMES[b]}</div>`;
+  }).join('');
+
+  const heads = $('beatHeads');
+  heads.style.gridTemplateColumns = `repeat(${room.beats}, 1fr)`;
+  heads.innerHTML = [...Array(room.beats)].map((_, i) => `<div class="bh">${i + 1}</div>`).join('');
+
+  const cells = $('cells');
+  cells.style.gridTemplateColumns = `repeat(${n}, minmax(16px, 1fr))`;
+  cells.style.gridTemplateRows = `repeat(${BANDS}, 38px)`;
+  cells.querySelectorAll('.cell,.brick').forEach(e => e.remove());
+  for (let rb = BANDS - 1; rb >= 0; rb--){          // ligne du haut = bande 7
+    for (let c = 0; c < n; c++){
+      const cell = document.createElement('div');
+      cell.className = 'cell' + (c % 4 === 0 ? ' beatstart' : '') + (c % 4 === 1 ? ' ontime' : '');
+      cell.dataset.col = c; cell.dataset.band = rb;
+      cell.title = `Temps ${Math.floor(c / 4) + 1} ${POS_SYMBOLS[c % 4]} · bande ${rb}`;
+      cell.onclick = () => onCellClick(c);
+      cell.onmouseenter = () => showGhost(c);
+      cells.appendChild(cell);
+    }
+  }
+  cells.onmouseleave = hideGhost;
+}
+function overlaps(col, band, thickness, ignoreId = null){
+  for (const b of bricks.values()){
+    if (b.col !== col || b.id === ignoreId) continue;
+    if (band < b.band + b.thickness && b.band < band + thickness) return b;
+  }
+  return null;
+}
+function gridPos(col, band, thickness){
+  return {colStart: col + 1, rowStart: BANDS - (band + thickness - 1), span: thickness};
+}
+function showGhost(col){
+  if (!selectedDef || room.phase !== 'compose') return hideGhost();
+  const g = $('ghost');
+  const {colStart, rowStart, span} = gridPos(col, selectedDef.band, selectedDef.thickness);
+  g.style.display = 'block';
+  g.style.gridColumn = colStart;
+  g.style.gridRow = `${rowStart} / span ${span}`;
+  g.style.position = 'relative';   // participe à la grille
+  g.className = overlaps(col, selectedDef.band, selectedDef.thickness) ? 'conflict' : '';
+  g.id = 'ghost';
+}
+function hideGhost(){ $('ghost').style.display = 'none'; }
+
+async function onCellClick(col){
+  if (room.phase !== 'compose') return toast('La salle est en phase de jeu — repassez en composition pour modifier.');
+  if (!selectedDef) return toast('Sélectionnez d\'abord une brique dans votre palette.');
+  const d = selectedDef;
+  const clash = overlaps(col, d.band, d.thickness);
+  if (clash){
+    const owner = players.get(clash.player_id);
+    return toast(`Zone déjà occupée par « ${clash.label} » (${owner ? owner.name : '?'}). Partagez le spectre !`);
+  }
+  const row = {room_code: room.code, player_id: me.id, col, band: d.band, thickness: d.thickness, label: d.label, sound: d.sound};
+  const {data, error} = await sb.from('poly_bricks').insert(row).select().single();
+  if (error){
+    if (error.code === '23P01') toast('Conflit : cette zone du spectre vient d\'être prise à cet instant. Partagez le spectre !');
+    else toast('Placement impossible : ' + error.message);
+    return;
+  }
+  bricks.set(data.id, data);
+  renderBricks(); rebuildEvents();
+}
+async function removeBrick(b){
+  if (room.phase !== 'compose') return toast('La salle est en phase de jeu — repassez en composition pour modifier.');
+  if (b.player_id !== me.id) return;
+  bricks.delete(b.id); renderBricks(); rebuildEvents();
+  const {error} = await sb.from('poly_bricks').delete().eq('id', b.id);
+  if (error){ toast('Suppression impossible : ' + error.message); bricks.set(b.id, b); renderBricks(); }
+}
+function renderBricks(){
+  const cells = $('cells');
+  cells.querySelectorAll('.brick').forEach(e => e.remove());
+  for (const b of bricks.values()){
+    if (b.col >= cols()) continue;
+    const p = players.get(b.player_id);
+    const el = document.createElement('div');
+    el.className = 'brick' + (b.player_id === me.id ? ' mine' : '');
+    el.dataset.id = b.id;
+    const {colStart, rowStart, span} = gridPos(b.col, b.band, b.thickness);
+    el.style.gridColumn = colStart;
+    el.style.gridRow = `${rowStart} / span ${span}`;
+    el.style.background = p ? p.color : '#888';
+    el.textContent = b.label;
+    el.title = `${b.label} — ${p ? p.name : '?'} · temps ${Math.floor(b.col / 4) + 1} ${POS_SYMBOLS[b.col % 4]}` +
+               (b.player_id === me.id ? ' (cliquer pour retirer)' : '');
+    if (b.player_id === me.id) el.onclick = e => { e.stopPropagation(); removeBrick(b); };
+    cells.appendChild(el);
+  }
+}
+
+/* =========================== lecture =========================== */
+let playing = false, soloPlayerId = null;
+let events = [];            // {time, sound, brickId} triés, temps relatif au cycle
+let evPointer = 0, cycleStart = 0, schedTimer = null;
+
+function beatDur(){ return 60 / room.tempo; }
+function cycleDur(){ return room.beats * beatDur(); }
+function colTime(col){
+  const beat = Math.floor(col / POS_PER_BEAT), pos = col % POS_PER_BEAT;
+  let t = (beat + POS_OFFSETS[pos]) * beatDur();
+  if (t < 0) t += cycleDur();               // « juste avant » le temps 1 boucle en fin de cycle
+  return t;
+}
+function rebuildEvents(){
+  events = [...bricks.values()]
+    .filter(b => b.col < cols() && (!soloPlayerId || b.player_id === soloPlayerId))
+    .map(b => ({time: colTime(b.col), sound: b.sound, brickId: b.id}))
+    .sort((a, b) => a.time - b.time);
+  if (playing){
+    const now = audioCtx().currentTime;
+    while (cycleStart + cycleDur() < now) cycleStart += cycleDur();
+    evPointer = events.findIndex(e => cycleStart + e.time >= now);
+    if (evPointer < 0){ evPointer = 0; cycleStart += cycleDur(); }
+  }
+}
+function startPlayback(solo = null){
+  if (playing) stopPlayback();
+  soloPlayerId = solo;
+  audioCtx();
+  playing = true;
+  cycleStart = AC.currentTime + 0.1;
+  rebuildEvents(); evPointer = 0;
+  schedTimer = setInterval(scheduleAhead, 25);
+  $('btnPlay').style.display = 'none';
+  $('btnStop').style.display = '';
+  $('playhead').style.display = 'block';
+  requestAnimationFrame(animatePlayhead);
+}
+function stopPlayback(){
+  playing = false; soloPlayerId = null;
+  clearInterval(schedTimer);
+  $('btnPlay').style.display = '';
+  $('btnStop').style.display = 'none';
+  $('playhead').style.display = 'none';
+}
+function restartPlayback(){ const s = soloPlayerId; stopPlayback(); startPlayback(s); }
+function scheduleAhead(){
+  if (!playing) return;
+  const ahead = AC.currentTime + 0.15;
+  let guard = 0;
+  while (guard++ < 500){
+    if (!events.length){                    // rien à jouer : avancer le cycle
+      if (cycleStart + cycleDur() > ahead) break;
+      cycleStart += cycleDur(); continue;
+    }
+    const ev = events[evPointer];
+    const t = cycleStart + ev.time;
+    if (t > ahead) break;
+    if (t >= AC.currentTime - 0.02){
+      playSound(ev.sound, t);
+      flashBrick(ev.brickId, (t - AC.currentTime) * 1000);
+    }
+    evPointer++;
+    if (evPointer >= events.length){ evPointer = 0; cycleStart += cycleDur(); }
+  }
+}
+function flashBrick(id, delayMs){
+  setTimeout(() => {
+    const el = document.querySelector(`.brick[data-id="${id}"]`);
+    if (el){ el.classList.add('hit'); setTimeout(() => el.classList.remove('hit'), 120); }
+  }, Math.max(0, delayMs));
+}
+function animatePlayhead(){
+  if (!playing) return;
+  const frac = ((AC.currentTime - cycleStart) / cycleDur() % 1 + 1) % 1;
+  $('playhead').style.left = (frac * 100) + '%';
+  requestAnimationFrame(animatePlayhead);
+}
+
+/* =========================== pattern individuel =========================== */
+function patternText(playerId){
+  const p = players.get(playerId);
+  const mine = [...bricks.values()].filter(b => b.player_id === playerId && b.col < cols());
+  const lines = [];
+  lines.push(`${p.name} — ${p.instrument || ''} · salle ${room.code} · ${room.beats} temps · ${room.tempo} BPM`);
+  lines.push('Positions par temps : ◀ avant · ● temps · ▶ après · ◦ contre-temps');
+  lines.push('');
+  for (let band = BANDS - 1; band >= 0; band--){
+    let row = '';
+    for (let c = 0; c < cols(); c++){
+      if (c % 4 === 0) row += '|';
+      row += mine.some(b => b.col === c && band >= b.band && band < b.band + b.thickness) ? 'X' : '·';
+    }
+    lines.push(`b${band} ${row}|  ${BAND_NAMES[band]}`);
+  }
+  lines.push('');
+  const byCol = [...mine].sort((a, b2) => a.col - b2.col);
+  for (const b of byCol){
+    lines.push(`temps ${Math.floor(b.col / 4) + 1} ${POS_SYMBOLS[b.col % 4]}  ${b.label}`);
+  }
+  if (!mine.length) lines.push('(aucune brique placée)');
+  return lines.join('\n');
+}
+function openMyPattern(){
+  $('patternWho').textContent = me.name;
+  $('patternText').textContent = patternText(me.id);
+  $('modalBack').classList.add('open');
+}
+
+/* =========================== câblage =========================== */
+function wire(){
+  $('btnCreate').onclick = createRoom;
+  $('btnJoin').onclick = joinRoom;
+  $('joinCode').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
+  $('btnLeave').onclick = leaveRoom;
+  $('btnPhase').onclick = async () => {
+    const next = room.phase === 'compose' ? 'play' : 'compose';
+    const {error} = await sb.from('poly_rooms').update({phase: next}).eq('code', room.code);
+    if (error) toast(error.message);
+  };
+  $('tempoSlider').oninput = e => { $('tempoVal').textContent = e.target.value; };
+  $('tempoSlider').onchange = async e => {
+    const {error} = await sb.from('poly_rooms').update({tempo: +e.target.value}).eq('code', room.code);
+    if (error) toast(error.message);
+  };
+  $('btnPlay').onclick = () => startPlayback();
+  $('btnStop').onclick = stopPlayback;
+  $('btnSuggest').onclick = addSuggested;
+  $('edBase').onchange = onBaseChange;
+  $('edShift').oninput = e => { $('edShiftVal').textContent = e.target.value; };
+  $('btnPreview').onclick = previewBrick;
+  $('btnAddBrick').onclick = addBrick;
+  $('btnMyPattern').onclick = openMyPattern;
+  $('btnCloseModal').onclick = () => { $('modalBack').classList.remove('open'); };
+  $('btnSoloPlay').onclick = () => { $('modalBack').classList.remove('open'); startPlayback(me.id); };
+  $('btnCopyPattern').onclick = () => {
+    navigator.clipboard.writeText($('patternText').textContent)
+      .then(() => toast('Pattern copié.', true), () => toast('Copie impossible.'));
+  };
+  $('modalBack').onclick = e => { if (e.target === $('modalBack')) $('modalBack').classList.remove('open'); };
+}
+
+/* =========================== démarrage =========================== */
+(function init(){
+  wire();
+  fillInstrumentSelects();
+  if (SUPABASE_URL.includes('<') || SUPABASE_ANON_KEY.includes('<')){
+    showScreen('config');
+    return;
+  }
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  showScreen('home');
+})();
+</script>
+</body>
+</html>
