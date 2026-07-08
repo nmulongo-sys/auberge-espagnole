@@ -4,9 +4,8 @@ Application web de coordination de pique-nique en auberge espagnole : inscriptio
 
 ![Aperçu des icônes kawaii](apercu-icones.png)
 
-**En ligne** : ouvrir `pique-nique.html` dans un navigateur, ou héberger sur InfinityFree / Synology Web Station (voir Déploiement).  
-**Démo en ligne (GitHub Pages)** : https://nmulongo-sys.github.io/auberge-espagnole/ — ⚠️ **mode local uniquement** (localStorage) : l'hébergement statique de Pages n'exécute pas `api.php`, donc pas de synchronisation partagée entre participants. Pour le mode partagé multi-contributeurs, conserver un hébergement PHP (InfinityFree / Synology).  
-**Statut** : révision 2026-07-02 · trois fichiers (`pique-nique.html` + `api.php` + `data.json`) · aucune dépendance externe hormis la police Fraunces (Google Fonts, avec repli système hors-ligne).
+**En ligne** : https://nmulongo-sys.github.io/auberge-espagnole/ — pleinement partagé : la liste est synchronisée en direct entre tous les participants via Supabase.  
+**Statut** : révision 2026-07-08 · fichier unique `pique-nique.html` (backend PHP supprimé) · stockage partagé Supabase (REST) · aucune dépendance externe hormis la police Fraunces (Google Fonts, avec repli système hors-ligne).
 
 ---
 
@@ -26,24 +25,15 @@ Un **guide participants** autonome est fourni séparément : `mode-emploi-auberg
 
 ## Déploiement
 
-Trois fichiers à placer dans le même dossier (`htdocs/` sur InfinityFree, `web/` sur Synology Web Station) :
+Hébergement statique (GitHub Pages) : le dépôt contient l'app (`pique-nique.html`) et une redirection (`index.html`). Aucun serveur applicatif : le stockage partagé est assuré par une table Supabase interrogée en REST directement depuis le navigateur.
 
-```
-htdocs/
-├── pique-nique.html          ← l'app
-├── api.php                   ← backend de stockage partagé
-└── data.json                 ← à créer manuellement (voir ci-dessous)
-```
+Côté Supabase (déjà en place, à refaire uniquement en cas de nouveau projet) :
 
-**Créer `data.json` manuellement** via le File Manager d'InfinityFree (le script PHP peut modifier un fichier existant mais pas en créer un) :
+- table `pn_state` : une ligne unique `id=1` portant `data` (jsonb, l'état complet de l'app) et `version` (bigint, verrouillage optimiste) ;
+- RLS activée : la clé publique (*publishable*) autorise `SELECT` et `UPDATE` sur cette ligne, mais ni `INSERT` ni `DELETE` — la liste ne peut être ni supprimée ni dupliquée depuis le client ;
+- l'URL du projet et la clé publique sont inscrites en tête du bloc stockage de `pique-nique.html` (constantes `SB_URL` / `SB_KEY`). Cette clé est publique par conception (même modèle que « Vacances entre nous »).
 
-```json
-{"event":{"titre":"Pique-nique — auberge espagnole","date":"","lieu":"","debut":"12:00","fin":"16:00","note":"","attendus":""},"people":[],"items":[]}
-```
-
-Puis lui donner les droits **666** (clic droit → Permissions/Chmod → 666).
-
-Le pied de page de l'app affiche le mode de stockage actif en temps réel (🟢 PHP partagé / 🟡 localStorage local). En cas de doute, ouvrir la Console navigateur : les erreurs d'écriture PHP sont retournées en JSON explicite.
+Le pied de page de l'app affiche le mode de stockage en temps réel (🟢 Supabase partagé / 🟡 hors ligne, données locales).
 
 ---
 
@@ -92,20 +82,20 @@ Le pied de page de l'app affiche le mode de stockage actif en temps réel (🟢 
 }
 ```
 
-Clé `localStorage` (mode dégradé) : `"pique-nique:data"`.
-
-### Couche de stockage — cascade 4 niveaux
+### Couche de stockage — Supabase avec verrouillage optimiste
 
 ```
-1. window.storage partagé  → artefact Claude (shared:true)
-2. api.php                 → hébergement auto-détecté (fetch ./api.php)
-3. localStorage            → fallback par navigateur
-4. _mem (objet JS)         → dernier recours (session only)
+1. Supabase (table pn_state, ligne unique id=1)   → partagé, source de vérité
+2. localStorage                                    → cache de lecture + repli hors ligne
 ```
 
-La variable `phpOk` (null / true / false) est définie dès le premier `store.get()` et utilisée dans le polling et le pied de page.
+- `sbGet()` lit `data` + `version` ; `sbVersion` mémorise la version lue.
+- `sbSet(v, expectedVersion)` écrit **conditionnellement** : `PATCH …&version=eq.N` avec `version = N+1`. Si quelqu'un a écrit entre-temps, la condition ne matche plus, la réponse est vide et l'écriture est considérée en conflit.
+- `mutate(fn)` est la seule fonction qui écrit l'état : boucle de rejeu (max 6 tentatives) — relire l'état frais, appliquer `fn`, tenter l'écriture conditionnelle, recommencer en cas de conflit. Deux inscriptions simultanées ne peuvent donc plus s'écraser : la seconde est rejouée sur l'état incluant la première.
+- Hors ligne : sauvegarde `localStorage` seulement, avec toast d'avertissement explicite. Le polling (6 s, suspendu quand l'onglet est masqué) resynchronise au retour de la connexion.
+- `sbOk` (null / true / false) pilote l'indicateur du pied de page.
 
-`mutate(fn)` est la seule fonction qui écrit l'état : elle relit d'abord l'état frais depuis le store avant d'appliquer `fn`, ce qui limite les écrasements entre deux contributeurs simultanés (verrouillage optimiste).
+Clé `localStorage` : `"pique-nique:data"`.
 
 ### Catégories
 
@@ -160,6 +150,13 @@ headcount().effective = Math.max(attendusSaisi, somme_des_tetes)
 ---
 
 ## Journal de développement
+
+### 2026-07-08 — Migration Supabase + GitHub Pages
+- Remplacement complet du backend PHP (`api.php` + `data.json` sur InfinityFree) par une table Supabase `pn_state` (ligne unique jsonb) interrogée en REST depuis le navigateur — `api.php` supprimé du dépôt.
+- **Verrouillage optimiste réel** : colonne `version`, écriture conditionnelle `PATCH …&version=eq.N`, boucle de rejeu dans `mutate()` (max 6 tentatives). L'ancienne fenêtre d'écrasement entre le GET et le POST est éliminée.
+- RLS : `SELECT`/`UPDATE` publics sur la ligne unique, `INSERT`/`DELETE` refusés à la clé publique (vérifié par tests curl).
+- Repli hors ligne : cache `localStorage` en lecture, toast d'avertissement en écriture locale, resynchronisation au retour de connexion ; polling suspendu quand l'onglet est masqué.
+- Suppression de la cascade 4 niveaux (Claude shared / PHP / localStorage / mémoire) ; le déploiement GitHub Pages devient le mode nominal pleinement partagé.
 
 ### 2026-07-02 — Version initiale documentée
 
