@@ -5,7 +5,7 @@ Application web de coordination de pique-nique en auberge espagnole : inscriptio
 ![Aperçu des icônes kawaii](apercu-icones.png)
 
 **En ligne** : https://nmulongo-sys.github.io/auberge-espagnole/ — pleinement partagé : la liste est synchronisée en direct entre tous les participants via Supabase.  
-**Statut** : révision 2026-07-08 · fichier unique `pique-nique.html` (backend PHP supprimé) · stockage partagé Supabase (REST) · aucune dépendance externe hormis la police Fraunces (Google Fonts, avec repli système hors-ligne).
+**Statut** : révision 2026-07-08 (b) · fichier unique `pique-nique.html` · stockage partagé Supabase (REST) · deux types d'événement (auberge espagnole / barbecue) · tour guidé de première connexion · aucune dépendance externe hormis la police Fraunces (Google Fonts, avec repli système hors-ligne).
 
 ---
 
@@ -17,7 +17,7 @@ Aucune installation. Ouvrir `pique-nique.html` dans n'importe quel navigateur mo
 |---|---|---|
 | **Participer** | Participants | Inscription à icônes kawaii : prénom, nombre de personnes, ce qu'on apporte (7 items cliquables), horaires en repli |
 | **Récapitulatif** | Tous | Menu commun par catégorie, couverture matériel, grille de présence avec vue chevauchements |
-| **Pilotage** | Organisateur | Configuration de l'événement, gestion des participants, export/import JSON |
+| **Pilotage** | Organisateur | Type d'événement (auberge espagnole / barbecue), configuration, gestion des participants, export/import JSON, relance du guide |
 
 Un **guide participants** autonome est fourni séparément : `mode-emploi-auberge-espagnole.html`.
 
@@ -133,6 +133,32 @@ counts         // { key: n } — état local du formulaire, n = nombre de taps
 
 Un tap sur une icône incrémente `counts[key]`. Le badge `×N` et le bouton `−` apparaissent à partir de `n ≥ 1`. La conversion vers `state.items` se fait à l'enregistrement via `readForm()`.
 
+### Types d'événement
+
+```js
+EVENT_TYPES = {
+  auberge: { label, titreDefaut, items: ITEMS_AUBERGE (7), lines: 3 lignes },
+  bbq:     { label, titreDefaut, items: ITEMS_BBQ (12),    lines: 4 lignes }
+}
+state.event.type   // "auberge" | "bbq" — partagé : choisi en Pilotage, appliqué chez tous
+evType()           // accesseur du type courant (repli "auberge")
+```
+
+- Le sélecteur `#evtype` (Pilotage) écrit `event.type` via `mutate()` ; le polling propage le
+  changement à tous les participants (la grille d'icônes est re-rendue par `renderAll()`).
+- Si le titre est encore le titre par défaut de l'ancien type, il bascule vers celui du nouveau.
+- Items barbecue : saucisses, merguez, chipolatas, hamburgers (→ Plat principal), baguettes
+  (→ Pain & tartinades), sauces (→ Autre nourriture), bières, vin (→ Boisson alcoolisée),
+  \+ soft/verres/serviettes/chaises repris du jeu commun. Huit nouveaux SVG kawaii dans `SIMPLE_SVG`.
+- Les catégories, l'onglet Récapitulatif et la logique « À prévoir » sont communs aux deux types.
+
+### Tour guidé de première connexion
+
+- `<dialog id="tourDlg">` : 4 étapes (bienvenue → participer → récapitulatif → c'est parti),
+  points de progression, boutons Passer / Suivant.
+- Ouverture automatique si la clé `localStorage` `"pique-nique:tour-vu"` est absente ;
+  posée à la fermeture. Relance possible via « 🧭 Revoir le guide » (Pilotage).
+
 ### Grille de présence
 
 - `windowOf(p)` → `[debut_min, fin_min]` (la fin de l'event si `p.depart` vide)
@@ -150,6 +176,13 @@ headcount().effective = Math.max(attendusSaisi, somme_des_tetes)
 ---
 
 ## Journal de développement
+
+### 2026-07-08 (b) — Types d'événement + tour guidé
+- **Type d'événement partagé** (`state.event.type`, sélecteur en Pilotage) : « Auberge espagnole » (7 icônes existantes) ou « Barbecue » (12 icônes : saucisses, merguez, chipolatas, hamburgers, baguettes, sauces, bières, vin + soft/verres/serviettes/chaises). Le choix de l'organisateur change la grille d'inscription chez tous les participants via le polling.
+- Huit nouveaux SVG kawaii dessinés dans le style existant (64×64, pastel, visage + joues roses).
+- Bascule automatique du titre par défaut si l'organisateur ne l'avait pas personnalisé.
+- **Tour guidé de première connexion** : dialog 4 étapes, ouverture automatique (drapeau `localStorage` `pique-nique:tour-vu`), bouton « 🧭 Revoir le guide » en Pilotage.
+- Test de fumée jsdom : 15 vérifications (tour, bascule BBQ, inscription avec les nouveaux items, catégorisation).
 
 ### 2026-07-08 — Migration Supabase + GitHub Pages
 - Remplacement complet du backend PHP (`api.php` + `data.json` sur InfinityFree) par une table Supabase `pn_state` (ligne unique jsonb) interrogée en REST depuis le navigateur — `api.php` supprimé du dépôt.
